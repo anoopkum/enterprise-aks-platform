@@ -90,7 +90,7 @@ resource "azurerm_role_assignment" "key_vault_admin" {
 #------------------------------------------------------------------------------
 
 resource "azurerm_role_assignment" "aks_secrets_user" {
-  count = var.key_vault_enable_rbac_authorization && var.create_aks_identity ? 1 : 0
+  count = var.enable_role_assignments && var.key_vault_enable_rbac_authorization && var.create_aks_identity ? 1 : 0
 
   scope                = azurerm_key_vault.main.id
   role_definition_name = "Key Vault Secrets User"
@@ -98,7 +98,7 @@ resource "azurerm_role_assignment" "aks_secrets_user" {
 }
 
 resource "azurerm_role_assignment" "kubelet_secrets_user" {
-  count = var.key_vault_enable_rbac_authorization && var.create_kubelet_identity ? 1 : 0
+  count = var.enable_role_assignments && var.key_vault_enable_rbac_authorization && var.create_kubelet_identity ? 1 : 0
 
   scope                = azurerm_key_vault.main.id
   role_definition_name = "Key Vault Secrets User"

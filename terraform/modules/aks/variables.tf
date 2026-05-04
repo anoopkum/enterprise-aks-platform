@@ -350,6 +350,12 @@ variable "enable_acr_integration" {
   default     = true
 }
 
+variable "enable_role_assignments" {
+  description = "Enable role assignments (requires Microsoft.Authorization/roleAssignments/write permission)"
+  type        = bool
+  default     = true
+}
+
 #------------------------------------------------------------------------------
 # Maintenance Window
 #------------------------------------------------------------------------------

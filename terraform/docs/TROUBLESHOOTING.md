@@ -629,9 +629,10 @@ The service principal doesn't have permission to create role assignments. This i
 - ACR pull role for AKS kubelet identity
 - Network Contributor role for AKS identity
 - Key Vault access policies
+- Managed Identity Operator role
 
 **Resolution:**
-Grant the service principal the "User Access Administrator" role:
+Option 1: Grant the service principal the "User Access Administrator" role:
 ```bash
 az role assignment create \
   --assignee <service-principal-object-id> \
@@ -639,7 +640,36 @@ az role assignment create \
   --scope /subscriptions/<subscription-id>
 ```
 
-**Note:** This is a privileged role. For production, consider using more granular permissions or pre-creating the role assignments.
+Option 2: Disable role assignments in the modules by adding `enable_role_assignments = false`:
+
+**In AKS module variables.tf:**
+```hcl
+variable "enable_role_assignments" {
+  description = "Enable role assignments (requires Microsoft.Authorization/roleAssignments/write permission)"
+  type        = bool
+  default     = true
+}
+```
+
+**In environment main.tf:**
+```hcl
+module "aks" {
+  # ...
+  enable_role_assignments = false
+}
+
+module "security" {
+  # ...
+  enable_role_assignments = false
+}
+```
+
+**Note:** When role assignments are disabled, you must manually create the following role assignments:
+1. AcrPull role for kubelet identity on ACR
+2. Network Contributor role for AKS identity on subnet
+3. Private DNS Zone Contributor role for AKS identity on private DNS zone
+4. Key Vault Secrets User role for AKS and kubelet identities on Key Vault
+5. Managed Identity Operator role for AKS identity on kubelet identity
 
 ---
 
@@ -649,41 +679,44 @@ az role assignment create \
 
 **Error Message:**
 ```
-Error: creating Firewall Policy Rule Collection Group: unexpected status 400 (400 Bad Request) 
-with error: InvalidRequestFormat: Priority 100 used for more than one rule collection
+Error: creating Rule Collection Group: unexpected status 400 (400 Bad Request) 
+with error: FirewallPolicyRuleCollectionGroupRuleCollectionPrioritiesMustBeUnique: 
+Invalid Rule Collection Group. Priority 100 used for more than one rule collection.
 ```
 
 **Cause:**
-Within a firewall policy rule collection group, each rule collection must have a unique priority. Application rule collections and network rule collections share the same priority namespace.
+Within a firewall policy rule collection group, ALL rule collections (both application and network) must have unique priorities. The priority namespace is shared between application_rule_collection and network_rule_collection blocks.
 
 **Resolution:**
-Ensure unique priorities across all rule collections within a group:
+Ensure unique priorities across all rule collections within a group. Use different priority ranges for application rules (100-400) and network rules (500-700):
 
 ```hcl
 resource "azurerm_firewall_policy_rule_collection_group" "aks" {
   # ...
   
+  # Application rules: 100-400
   application_rule_collection {
     name     = "aks-management"
-    priority = 100  # Unique
+    priority = 100
     # ...
   }
 
   application_rule_collection {
     name     = "azure-monitor"
-    priority = 200  # Unique
+    priority = 200
     # ...
   }
 
+  # Network rules: 500-700 (different range to avoid conflicts)
   network_rule_collection {
     name     = "ntp"
-    priority = 500  # Must be different from application rules
+    priority = 500  # NOT 100!
     # ...
   }
 
   network_rule_collection {
     name     = "dns"
-    priority = 600  # Unique
+    priority = 600
     # ...
   }
 }

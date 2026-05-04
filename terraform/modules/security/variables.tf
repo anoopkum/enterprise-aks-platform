@@ -187,3 +187,13 @@ variable "enable_diagnostic_settings" {
   type        = bool
   default     = true
 }
+
+#------------------------------------------------------------------------------
+# Role Assignment Configuration
+#------------------------------------------------------------------------------
+
+variable "enable_role_assignments" {
+  description = "Enable role assignments (requires Microsoft.Authorization/roleAssignments/write permission)"
+  type        = bool
+  default     = true
+}

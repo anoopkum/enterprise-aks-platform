@@ -185,7 +185,7 @@ resource "azurerm_firewall_policy_rule_collection_group" "aks" {
   #----------------------------------------------------------------------------
   network_rule_collection {
     name     = "ntp"
-    priority = 100
+    priority = 500
     action   = "Allow"
 
     rule {
@@ -202,7 +202,7 @@ resource "azurerm_firewall_policy_rule_collection_group" "aks" {
   #----------------------------------------------------------------------------
   network_rule_collection {
     name     = "dns"
-    priority = 200
+    priority = 600
     action   = "Allow"
 
     rule {
@@ -219,7 +219,7 @@ resource "azurerm_firewall_policy_rule_collection_group" "aks" {
   #----------------------------------------------------------------------------
   network_rule_collection {
     name     = "azure-services"
-    priority = 300
+    priority = 700
     action   = "Allow"
 
     rule {

@@ -38,7 +38,7 @@ resource "azurerm_user_assigned_identity" "kubelet" {
 #------------------------------------------------------------------------------
 
 resource "azurerm_role_assignment" "aks_kubelet_identity_operator" {
-  count = var.create_aks_identity && var.create_kubelet_identity ? 1 : 0
+  count = var.enable_role_assignments && var.create_aks_identity && var.create_kubelet_identity ? 1 : 0
 
   scope                = azurerm_user_assigned_identity.kubelet[0].id
   role_definition_name = "Managed Identity Operator"

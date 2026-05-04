@@ -170,6 +170,10 @@ module "security" {
   create_aks_identity     = true
   create_kubelet_identity = true
 
+  # Disable role assignments (SP lacks Microsoft.Authorization/roleAssignments/write permission)
+  # To enable, grant the SP "User Access Administrator" role at subscription level
+  enable_role_assignments = false
+
   # Diagnostic settings
   log_analytics_workspace_id = module.observability.log_analytics_workspace_id
   enable_diagnostic_settings = true
@@ -310,8 +314,9 @@ module "aks" {
   oidc_issuer_enabled                = true
 
   # ACR integration
-  acr_id                 = module.data.acr_id
-  enable_acr_integration = true
+  acr_id                  = module.data.acr_id
+  enable_acr_integration  = true
+  enable_role_assignments = false # SP lacks Microsoft.Authorization/roleAssignments/write permission
 
   # Maintenance window
   maintenance_window = {

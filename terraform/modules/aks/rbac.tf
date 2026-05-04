@@ -8,7 +8,7 @@
 #------------------------------------------------------------------------------
 
 resource "azurerm_role_assignment" "acr_pull" {
-  count = var.enable_acr_integration ? 1 : 0
+  count = var.enable_role_assignments && var.enable_acr_integration ? 1 : 0
 
   scope                = var.acr_id
   role_definition_name = "AcrPull"
@@ -21,7 +21,7 @@ resource "azurerm_role_assignment" "acr_pull" {
 #------------------------------------------------------------------------------
 
 resource "azurerm_role_assignment" "network_contributor" {
-  count = var.identity_type == "UserAssigned" ? 1 : 0
+  count = var.enable_role_assignments && var.identity_type == "UserAssigned" ? 1 : 0
 
   scope                = var.vnet_subnet_id
   role_definition_name = "Network Contributor"
@@ -34,7 +34,7 @@ resource "azurerm_role_assignment" "network_contributor" {
 #------------------------------------------------------------------------------
 
 resource "azurerm_role_assignment" "private_dns_contributor" {
-  count = var.private_cluster_enabled && var.identity_type == "UserAssigned" ? 1 : 0
+  count = var.enable_role_assignments && var.private_cluster_enabled && var.identity_type == "UserAssigned" ? 1 : 0
 
   scope                = var.private_dns_zone_id
   role_definition_name = "Private DNS Zone Contributor"
