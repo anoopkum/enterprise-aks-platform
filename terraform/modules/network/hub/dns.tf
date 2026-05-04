@@ -10,7 +10,7 @@
 locals {
   # AKS private DNS zone must be region-specific
   aks_private_dns_zone_name = coalesce(var.aks_private_dns_zone_name, "privatelink.${var.location}.azmk8s.io")
-  
+
   # Combine all private DNS zones
   all_private_dns_zones = var.create_private_dns_zones ? concat(var.private_dns_zones, [local.aks_private_dns_zone_name]) : []
 }
