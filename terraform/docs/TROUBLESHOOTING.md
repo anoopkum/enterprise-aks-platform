@@ -700,9 +700,9 @@ resource "azurerm_firewall_policy_rule_collection_group" "aks" {
 Error: Unsupported argument
 
   on main.tf line 70, in resource "azurerm_kubernetes_cluster" "main":
-  70:     enable_auto_scaling = true
+  70:     auto_scaling_enabled = true
 
-An argument named "enable_auto_scaling" is not expected here.
+An argument named "auto_scaling_enabled" is not expected here.
 ```
 
 Or:
@@ -710,23 +710,23 @@ Or:
 Error: Unsupported argument
 
   on main.tf line 103, in resource "azurerm_kubernetes_cluster" "main":
- 103:   automatic_channel_upgrade = var.automatic_channel_upgrade
+ 103:   automatic_upgrade_channel = var.automatic_channel_upgrade
 
-An argument named "automatic_channel_upgrade" is not expected here.
+An argument named "automatic_upgrade_channel" is not expected here.
 ```
 
 **Cause:**
-AzureRM provider 3.x changed some attribute names for AKS resources. The naming convention changed between versions.
+AzureRM provider versions have different attribute names for AKS resources. The naming convention varies between versions.
 
 **Resolution:**
-Use the correct attribute names for your provider version:
+Use the correct attribute names for your provider version. For AzureRM 3.x (up to 3.117.x):
 
-| Old Name (pre-3.75) | New Name (3.75+) |
+| Correct Name (3.x) | Incorrect Name |
 |---------------------|------------------|
 | `enable_auto_scaling` | `auto_scaling_enabled` |
 | `automatic_channel_upgrade` | `automatic_upgrade_channel` |
 
-**Before:**
+**Correct usage:**
 ```hcl
 default_node_pool {
   enable_auto_scaling = true
@@ -735,16 +735,7 @@ default_node_pool {
 automatic_channel_upgrade = var.automatic_channel_upgrade
 ```
 
-**After:**
-```hcl
-default_node_pool {
-  auto_scaling_enabled = true
-}
-
-automatic_upgrade_channel = var.automatic_channel_upgrade
-```
-
-**Note:** Check the [AzureRM Provider Changelog](https://github.com/hashicorp/terraform-provider-azurerm/blob/main/CHANGELOG.md) for attribute name changes when upgrading provider versions.
+**Note:** Check the [AzureRM Provider Changelog](https://github.com/hashicorp/terraform-provider-azurerm/blob/main/CHANGELOG.md) for attribute name changes when upgrading provider versions. Always verify attribute names against your locked provider version.
 
 ---
 

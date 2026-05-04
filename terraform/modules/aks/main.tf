@@ -67,7 +67,7 @@ resource "azurerm_kubernetes_cluster" "main" {
     os_disk_type                 = var.system_node_pool.os_disk_type
     vnet_subnet_id               = var.vnet_subnet_id
     only_critical_addons_enabled = var.system_node_pool.only_critical_addons_enabled
-    auto_scaling_enabled         = true
+    enable_auto_scaling          = true
     node_labels                  = var.system_node_pool.node_labels
     temporary_name_for_rotation  = "systemtemp"
 
@@ -100,7 +100,7 @@ resource "azurerm_kubernetes_cluster" "main" {
   local_account_disabled = var.local_account_disabled
 
   # Automatic upgrade
-  automatic_upgrade_channel = var.automatic_channel_upgrade
+  automatic_channel_upgrade = var.automatic_channel_upgrade
 
   # Maintenance window
   dynamic "maintenance_window" {
