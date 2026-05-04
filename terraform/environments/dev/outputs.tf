@@ -9,11 +9,11 @@
 output "resource_groups" {
   description = "Map of resource group names"
   value = {
-    hub          = azurerm_resource_group.hub.name
-    spoke        = azurerm_resource_group.spoke.name
-    aks          = azurerm_resource_group.aks.name
-    security     = azurerm_resource_group.security.name
-    data         = azurerm_resource_group.data.name
+    hub           = azurerm_resource_group.hub.name
+    spoke         = azurerm_resource_group.spoke.name
+    aks           = azurerm_resource_group.aks.name
+    security      = azurerm_resource_group.security.name
+    data          = azurerm_resource_group.data.name
     observability = azurerm_resource_group.observability.name
   }
 }

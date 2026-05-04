@@ -30,7 +30,7 @@ terraform {
     # Authentication options:
     # 1. Azure CLI (local development): export ARM_USE_CLI=true
     # 2. OIDC (CI/CD): export ARM_USE_OIDC=true
-    use_oidc = false  # Set to true for CI/CD
+    use_oidc = false # Set to true for CI/CD
 
     # Subscription and tenant IDs (can also use ARM_SUBSCRIPTION_ID, ARM_TENANT_ID)
     # subscription_id = "27320543-d2ea-4fd5-b361-0145cc56934b"

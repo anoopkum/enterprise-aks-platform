@@ -24,11 +24,11 @@ kubernetes_version = "1.31"
 # Azure AD Admin Group - Create a group in Azure AD and add the Object ID here
 # To create: az ad group create --display-name "AKS-Admins-Dev" --mail-nickname "aks-admins-dev"
 # To get ID: az ad group show --group "AKS-Admins-Dev" --query id -o tsv
-aks_admin_group_ids = []  # Add your Azure AD group ID here
+aks_admin_group_ids = [] # Add your Azure AD group ID here
 
 # API Server Access - Your current IP and common ranges
 api_server_authorized_ip_ranges = [
-  "2.221.35.167/32",   # Your current IP
+  "2.221.35.167/32", # Your current IP
 ]
 
 # Budget

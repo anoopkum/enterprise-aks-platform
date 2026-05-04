@@ -293,7 +293,7 @@ module "aks" {
       eviction_policy    = "Delete"
       spot_max_price     = -1
       node_labels = {
-        "workload-type"                       = "spot"
+        "workload-type"                         = "spot"
         "kubernetes.azure.com/scalesetpriority" = "spot"
       }
       node_taints = ["kubernetes.azure.com/scalesetpriority=spot:NoSchedule"]

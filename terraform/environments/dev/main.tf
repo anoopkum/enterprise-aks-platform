@@ -74,7 +74,7 @@ module "observability" {
   log_analytics_retention_in_days = 30
 
   # Alerts
-  create_alerts        = false # Disable alerts in dev
+  create_alerts         = false # Disable alerts in dev
   alert_email_receivers = []
 
   tags = local.common_tags
@@ -233,8 +233,8 @@ module "aks" {
   api_server_authorized_ip_ranges     = var.api_server_authorized_ip_ranges
 
   # Identity
-  identity_type             = "UserAssigned"
-  user_assigned_identity_id = module.security.aks_identity_id
+  identity_type              = "UserAssigned"
+  user_assigned_identity_id  = module.security.aks_identity_id
   kubelet_identity_client_id = module.security.kubelet_identity_client_id
   kubelet_identity_object_id = module.security.kubelet_identity_principal_id
   kubelet_identity_id        = module.security.kubelet_identity_id
