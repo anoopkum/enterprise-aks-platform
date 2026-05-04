@@ -108,7 +108,7 @@ resource "azurerm_monitor_metric_alert" "node_cpu" {
   }
 
   dynamic "action" {
-    for_each = var.teams_webhook_url != null ? [1] : []
+    for_each = var.teams_webhook_url != null ? toset(["teams"]) : toset([])
     content {
       action_group_id = azurerm_monitor_action_group.teams[0].id
     }
@@ -141,7 +141,7 @@ resource "azurerm_monitor_metric_alert" "node_memory" {
   }
 
   dynamic "action" {
-    for_each = var.teams_webhook_url != null ? [1] : []
+    for_each = var.teams_webhook_url != null ? toset(["teams"]) : toset([])
     content {
       action_group_id = azurerm_monitor_action_group.teams[0].id
     }
@@ -174,7 +174,7 @@ resource "azurerm_monitor_metric_alert" "pod_restarts" {
   }
 
   dynamic "action" {
-    for_each = var.teams_webhook_url != null ? [1] : []
+    for_each = var.teams_webhook_url != null ? toset(["teams"]) : toset([])
     content {
       action_group_id = azurerm_monitor_action_group.teams[0].id
     }
@@ -213,7 +213,7 @@ resource "azurerm_monitor_metric_alert" "unschedulable_pods" {
   }
 
   dynamic "action" {
-    for_each = var.pagerduty_integration_key != null ? [1] : []
+    for_each = var.pagerduty_integration_key != null ? toset(["pagerduty"]) : toset([])
     content {
       action_group_id = azurerm_monitor_action_group.pagerduty[0].id
     }
