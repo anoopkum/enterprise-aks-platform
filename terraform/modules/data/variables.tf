@@ -237,3 +237,19 @@ variable "enable_diagnostic_settings" {
   type        = bool
   default     = true
 }
+
+#------------------------------------------------------------------------------
+# Storage Account Network Security
+#------------------------------------------------------------------------------
+
+variable "storage_allowed_subnet_ids" {
+  description = "List of subnet IDs allowed to access the storage account"
+  type        = list(string)
+  default     = []
+}
+
+variable "storage_allowed_ip_ranges" {
+  description = "List of IP ranges allowed to access the storage account (CIDR notation)"
+  type        = list(string)
+  default     = []
+}

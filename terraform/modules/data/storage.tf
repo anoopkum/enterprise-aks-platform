@@ -26,6 +26,18 @@ resource "azurerm_storage_account" "main" {
   https_traffic_only_enabled      = true
   allow_nested_items_to_be_public = false
   public_network_access_enabled   = var.storage_account_public_network_access_enabled
+  shared_access_key_enabled       = false
+
+  # Infrastructure encryption (double encryption)
+  infrastructure_encryption_enabled = true
+
+  # Network rules - default deny (CRITICAL: AZU-0012)
+  network_rules {
+    default_action             = "Deny"
+    bypass                     = ["AzureServices", "Logging", "Metrics"]
+    virtual_network_subnet_ids = var.storage_allowed_subnet_ids
+    ip_rules                   = var.storage_allowed_ip_ranges
+  }
 
   # Blob properties
   blob_properties {
@@ -37,6 +49,17 @@ resource "azurerm_storage_account" "main" {
 
     container_delete_retention_policy {
       days = 7
+    }
+  }
+
+  # Queue properties for logging (CKV_AZURE_33)
+  queue_properties {
+    logging {
+      delete                = true
+      read                  = true
+      write                 = true
+      version               = "1.0"
+      retention_policy_days = 7
     }
   }
 

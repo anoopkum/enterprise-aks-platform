@@ -70,6 +70,22 @@ resource "azurerm_postgresql_flexible_server" "main" {
 }
 
 #------------------------------------------------------------------------------
+# PostgreSQL Server Configuration - SSL/TLS (MEDIUM: AZU-0026)
+#------------------------------------------------------------------------------
+
+resource "azurerm_postgresql_flexible_server_configuration" "require_secure_transport" {
+  name      = "require_secure_transport"
+  server_id = azurerm_postgresql_flexible_server.main.id
+  value     = "ON"
+}
+
+resource "azurerm_postgresql_flexible_server_configuration" "ssl_min_protocol_version" {
+  name      = "ssl_min_protocol_version"
+  server_id = azurerm_postgresql_flexible_server.main.id
+  value     = "TLSv1.2"
+}
+
+#------------------------------------------------------------------------------
 # PostgreSQL Server Configuration - PgBouncer
 #------------------------------------------------------------------------------
 
