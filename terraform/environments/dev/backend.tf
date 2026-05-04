@@ -23,7 +23,7 @@ terraform {
     # Storage account details - update these values after running init-backend.sh
     # Run: bash terraform/scripts/init-backend.sh dev
     resource_group_name  = "rg-enterprise-dev-tfstate"
-    storage_account_name = "enterprisedevtfstate70934"
+    storage_account_name = "entdevtfstate4750"
     container_name       = "tfstate"
     key                  = "dev/aks-platform.tfstate"
 
