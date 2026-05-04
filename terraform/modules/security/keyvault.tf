@@ -110,7 +110,7 @@ resource "azurerm_role_assignment" "kubelet_secrets_user" {
 #------------------------------------------------------------------------------
 
 resource "azurerm_monitor_diagnostic_setting" "key_vault" {
-  count = var.enable_diagnostic_settings && var.log_analytics_workspace_id != null ? 1 : 0
+  count = var.enable_diagnostic_settings ? 1 : 0
 
   name                       = "${azurerm_key_vault.main.name}-diag"
   target_resource_id         = azurerm_key_vault.main.id

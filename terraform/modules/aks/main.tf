@@ -125,7 +125,7 @@ resource "azurerm_kubernetes_cluster" "main" {
 
   # Container Insights (OMS agent)
   dynamic "oms_agent" {
-    for_each = var.oms_agent_enabled && var.log_analytics_workspace_id != null ? [1] : []
+    for_each = var.oms_agent_enabled ? [1] : []
     content {
       log_analytics_workspace_id = var.log_analytics_workspace_id
     }
@@ -157,7 +157,7 @@ resource "azurerm_kubernetes_cluster" "main" {
 #------------------------------------------------------------------------------
 
 resource "azurerm_monitor_diagnostic_setting" "aks" {
-  count = var.log_analytics_workspace_id != null ? 1 : 0
+  count = var.oms_agent_enabled ? 1 : 0
 
   name                       = "${azurerm_kubernetes_cluster.main.name}-diag"
   target_resource_id         = azurerm_kubernetes_cluster.main.id

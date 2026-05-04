@@ -156,7 +156,7 @@ resource "azurerm_storage_management_policy" "main" {
 #------------------------------------------------------------------------------
 
 resource "azurerm_monitor_diagnostic_setting" "storage" {
-  count = var.create_storage_account && var.storage_account_name != null && var.enable_diagnostic_settings && var.log_analytics_workspace_id != null ? 1 : 0
+  count = var.create_storage_account && var.storage_account_name != null && var.enable_diagnostic_settings ? 1 : 0
 
   name                       = "${azurerm_storage_account.main[0].name}-diag"
   target_resource_id         = "${azurerm_storage_account.main[0].id}/blobServices/default"

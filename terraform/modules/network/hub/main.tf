@@ -208,7 +208,7 @@ resource "azurerm_bastion_host" "main" {
 #------------------------------------------------------------------------------
 
 resource "azurerm_monitor_diagnostic_setting" "firewall" {
-  count = var.enable_firewall && var.enable_diagnostic_settings && var.log_analytics_workspace_id != null ? 1 : 0
+  count = var.enable_firewall && var.enable_diagnostic_settings ? 1 : 0
 
   name                       = "${azurerm_firewall.main[0].name}-diag"
   target_resource_id         = azurerm_firewall.main[0].id
@@ -253,7 +253,7 @@ resource "azurerm_monitor_diagnostic_setting" "firewall" {
 #------------------------------------------------------------------------------
 
 resource "azurerm_monitor_diagnostic_setting" "bastion" {
-  count = var.enable_bastion && var.enable_diagnostic_settings && var.log_analytics_workspace_id != null ? 1 : 0
+  count = var.enable_bastion && var.enable_diagnostic_settings ? 1 : 0
 
   name                       = "${azurerm_bastion_host.main[0].name}-diag"
   target_resource_id         = azurerm_bastion_host.main[0].id
@@ -274,7 +274,7 @@ resource "azurerm_monitor_diagnostic_setting" "bastion" {
 #------------------------------------------------------------------------------
 
 resource "azurerm_monitor_diagnostic_setting" "vnet" {
-  count = var.enable_diagnostic_settings && var.log_analytics_workspace_id != null ? 1 : 0
+  count = var.enable_diagnostic_settings ? 1 : 0
 
   name                       = "${azurerm_virtual_network.hub.name}-diag"
   target_resource_id         = azurerm_virtual_network.hub.id

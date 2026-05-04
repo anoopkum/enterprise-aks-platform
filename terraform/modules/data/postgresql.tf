@@ -140,7 +140,7 @@ resource "azurerm_postgresql_flexible_server_configuration" "log_disconnections"
 #------------------------------------------------------------------------------
 
 resource "azurerm_monitor_diagnostic_setting" "postgresql" {
-  count = var.enable_diagnostic_settings && var.log_analytics_workspace_id != null ? 1 : 0
+  count = var.enable_diagnostic_settings ? 1 : 0
 
   name                       = "${azurerm_postgresql_flexible_server.main.name}-diag"
   target_resource_id         = azurerm_postgresql_flexible_server.main.id

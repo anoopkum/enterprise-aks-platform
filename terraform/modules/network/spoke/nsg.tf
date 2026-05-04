@@ -339,7 +339,7 @@ resource "azurerm_subnet_network_security_group_association" "app_gateway" {
 #------------------------------------------------------------------------------
 
 resource "azurerm_monitor_diagnostic_setting" "nsg_aks" {
-  count = var.enable_nsg && var.enable_diagnostic_settings && var.log_analytics_workspace_id != null ? 1 : 0
+  count = var.enable_nsg && var.enable_diagnostic_settings ? 1 : 0
 
   name                       = "${azurerm_network_security_group.aks[0].name}-diag"
   target_resource_id         = azurerm_network_security_group.aks[0].id
@@ -355,7 +355,7 @@ resource "azurerm_monitor_diagnostic_setting" "nsg_aks" {
 }
 
 resource "azurerm_monitor_diagnostic_setting" "nsg_pe" {
-  count = var.enable_nsg && var.enable_diagnostic_settings && var.log_analytics_workspace_id != null ? 1 : 0
+  count = var.enable_nsg && var.enable_diagnostic_settings ? 1 : 0
 
   name                       = "${azurerm_network_security_group.private_endpoints[0].name}-diag"
   target_resource_id         = azurerm_network_security_group.private_endpoints[0].id

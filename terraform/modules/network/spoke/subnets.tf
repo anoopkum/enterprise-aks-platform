@@ -61,7 +61,7 @@ resource "azurerm_subnet" "app_gateway" {
 #------------------------------------------------------------------------------
 
 resource "azurerm_route_table" "aks" {
-  count = var.enable_forced_tunneling && var.hub_firewall_private_ip != null ? 1 : 0
+  count = var.enable_forced_tunneling ? 1 : 0
 
   name                          = "${var.vnet_name}-aks-rt"
   location                      = var.location
@@ -72,7 +72,7 @@ resource "azurerm_route_table" "aks" {
 }
 
 resource "azurerm_route" "default_to_firewall" {
-  count = var.enable_forced_tunneling && var.hub_firewall_private_ip != null ? 1 : 0
+  count = var.enable_forced_tunneling ? 1 : 0
 
   name                   = "default-to-firewall"
   resource_group_name    = var.resource_group_name
@@ -83,7 +83,7 @@ resource "azurerm_route" "default_to_firewall" {
 }
 
 resource "azurerm_subnet_route_table_association" "aks" {
-  count = var.enable_forced_tunneling && var.hub_firewall_private_ip != null ? 1 : 0
+  count = var.enable_forced_tunneling ? 1 : 0
 
   subnet_id      = azurerm_subnet.aks.id
   route_table_id = azurerm_route_table.aks[0].id

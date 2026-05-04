@@ -84,7 +84,7 @@ resource "azurerm_private_endpoint" "acr" {
 #------------------------------------------------------------------------------
 
 resource "azurerm_monitor_diagnostic_setting" "acr" {
-  count = var.enable_diagnostic_settings && var.log_analytics_workspace_id != null ? 1 : 0
+  count = var.enable_diagnostic_settings ? 1 : 0
 
   name                       = "${azurerm_container_registry.main.name}-diag"
   target_resource_id         = azurerm_container_registry.main.id
