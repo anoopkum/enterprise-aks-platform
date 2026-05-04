@@ -285,7 +285,8 @@ module "aks" {
   oidc_issuer_enabled                = true
 
   # ACR integration
-  acr_id = module.data.acr_id
+  acr_id                 = module.data.acr_id
+  enable_acr_integration = true
 
   tags = local.common_tags
 }

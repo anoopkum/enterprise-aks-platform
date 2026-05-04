@@ -344,6 +344,12 @@ variable "acr_id" {
   default     = null
 }
 
+variable "enable_acr_integration" {
+  description = "Enable ACR integration (AcrPull role assignment)"
+  type        = bool
+  default     = true
+}
+
 #------------------------------------------------------------------------------
 # Maintenance Window
 #------------------------------------------------------------------------------
