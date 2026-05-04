@@ -1,0 +1,21 @@
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequireTLS
+metadata:
+  name: require-ingress-tls
+  annotations:
+    description: Requires all Ingress resources to have TLS configured
+spec:
+  # Start in audit mode, switch to deny after validation
+  enforcementAction: warn
+  match:
+    kinds:
+      - apiGroups: ["networking.k8s.io"]
+        kinds: ["Ingress"]
+    excludedNamespaces:
+      - kube-system
+      - gatekeeper-system
+  parameters:
+    exemptHosts:
+      # Health check endpoints that don't need TLS
+      - "health.internal.local"
+    requireSecretName: true

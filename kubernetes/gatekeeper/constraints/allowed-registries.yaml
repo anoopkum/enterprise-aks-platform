@@ -1,0 +1,36 @@
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sAllowedRegistries
+metadata:
+  name: allowed-container-registries
+  annotations:
+    description: Restricts container images to approved registries only
+spec:
+  # Start in audit mode, switch to deny after validation
+  enforcementAction: warn
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+      - apiGroups: ["apps"]
+        kinds: ["Deployment", "DaemonSet", "StatefulSet", "ReplicaSet"]
+    excludedNamespaces:
+      - kube-system
+      - gatekeeper-system
+      - azure-arc
+  parameters:
+    allowedRegistries:
+      # Organization's private ACR
+      - "contosoprodacr.azurecr.io"
+      - "contosotestacr.azurecr.io"
+      - "contosodevacr.azurecr.io"
+      # Microsoft Container Registry (for system images)
+      - "mcr.microsoft.com"
+      # Kubernetes official images
+      - "registry.k8s.io"
+      # Quay.io for some operators
+      - "quay.io/jetstack"
+      - "quay.io/prometheus"
+      - "quay.io/prometheus-operator"
+    exemptImages:
+      # Allow specific system images that may come from other registries
+      - "docker.io/grafana/grafana:*"

@@ -1,0 +1,79 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8srequiretls
+  annotations:
+    description: >-
+      Requires Ingress resources to have TLS configured. This ensures
+      all external traffic is encrypted.
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequireTLS
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            exemptHosts:
+              description: List of hosts that are exempt from TLS requirement
+              type: array
+              items:
+                type: string
+            requireSecretName:
+              description: Whether to require a secretName in TLS config
+              type: boolean
+              default: true
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequiretls
+
+        import future.keywords.in
+
+        violation[{"msg": msg}] {
+          input.review.object.kind == "Ingress"
+          host := input.review.object.spec.rules[_].host
+          not is_exempt_host(host)
+          not has_tls_for_host(host)
+          msg := sprintf("Ingress host '%v' must have TLS configured", [host])
+        }
+
+        violation[{"msg": msg}] {
+          input.review.object.kind == "Ingress"
+          require_secret_name
+          tls := input.review.object.spec.tls[_]
+          not tls.secretName
+          msg := "Ingress TLS configuration must specify a secretName"
+        }
+
+        violation[{"msg": msg}] {
+          input.review.object.kind == "Ingress"
+          not input.review.object.spec.tls
+          host := input.review.object.spec.rules[_].host
+          not is_exempt_host(host)
+          msg := sprintf("Ingress must have TLS configured for host '%v'", [host])
+        }
+
+        has_tls_for_host(host) {
+          tls := input.review.object.spec.tls[_]
+          tls.hosts[_] == host
+        }
+
+        # Wildcard TLS covers the host
+        has_tls_for_host(host) {
+          tls := input.review.object.spec.tls[_]
+          wildcard := tls.hosts[_]
+          startswith(wildcard, "*.")
+          suffix := substring(wildcard, 1, -1)
+          endswith(host, suffix)
+        }
+
+        is_exempt_host(host) {
+          exempt_hosts := object.get(input, ["parameters", "exemptHosts"], [])
+          exempt_hosts[_] == host
+        }
+
+        require_secret_name {
+          object.get(input, ["parameters", "requireSecretName"], true)
+        }

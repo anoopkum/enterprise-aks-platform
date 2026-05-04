@@ -1,0 +1,81 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: app-tls-certificate
+  namespace: app-team-a-prod
+  labels:
+    app.kubernetes.io/name: app-certificate
+    app.kubernetes.io/component: tls
+spec:
+  # Secret name where the certificate will be stored
+  secretName: app-tls-secret
+  
+  # Duration and renewal
+  duration: 2160h    # 90 days
+  renewBefore: 360h  # 15 days before expiry
+  
+  # Subject
+  subject:
+    organizations:
+      - Contoso
+  
+  # Common name (deprecated, use dnsNames)
+  commonName: app.contoso.com
+  
+  # DNS names for the certificate
+  dnsNames:
+    - app.contoso.com
+    - www.app.contoso.com
+  
+  # Private key settings
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  
+  # Usages
+  usages:
+    - server auth
+    - client auth
+  
+  # Issuer reference
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+# Wildcard certificate example (requires DNS01 solver)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-tls-certificate
+  namespace: cert-manager
+  labels:
+    app.kubernetes.io/name: wildcard-certificate
+    app.kubernetes.io/component: tls
+spec:
+  secretName: wildcard-tls-secret
+  duration: 2160h
+  renewBefore: 360h
+  
+  subject:
+    organizations:
+      - Contoso
+  
+  dnsNames:
+    - "*.apps.contoso.com"
+    - "apps.contoso.com"
+  
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  
+  usages:
+    - server auth
+    - client auth
+  
+  issuerRef:
+    name: letsencrypt-dns
+    kind: ClusterIssuer
+    group: cert-manager.io

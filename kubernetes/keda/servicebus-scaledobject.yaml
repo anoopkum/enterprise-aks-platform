@@ -1,0 +1,146 @@
+# KEDA ScaledObject for Azure Service Bus Queue
+#
+# This example scales a deployment based on the number of messages
+# in an Azure Service Bus queue. Uses Workload Identity for authentication.
+#
+# Prerequisites:
+# - KEDA installed with Azure Workload Identity enabled
+# - Managed Identity with Service Bus Data Receiver role
+# - Service Bus namespace and queue created
+
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: order-processor-scaler
+  namespace: app-team-a-prod
+  labels:
+    app: order-processor
+    scaler: azure-servicebus
+spec:
+  # Target deployment to scale
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: order-processor
+
+  # Polling interval for checking queue length (seconds)
+  pollingInterval: 15
+
+  # Cooldown period before scaling down (seconds)
+  cooldownPeriod: 300
+
+  # Minimum replicas (0 enables scale-to-zero)
+  minReplicaCount: 0
+
+  # Maximum replicas to prevent runaway scaling
+  maxReplicaCount: 50
+
+  # Advanced scaling behavior
+  advanced:
+    restoreToOriginalReplicaCount: false
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+            - type: Percent
+              value: 25
+              periodSeconds: 60
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+            - type: Percent
+              value: 100
+              periodSeconds: 15
+            - type: Pods
+              value: 10
+              periodSeconds: 15
+          selectPolicy: Max
+
+  triggers:
+    - type: azure-servicebus
+      metadata:
+        # Service Bus queue name
+        queueName: orders
+
+        # Service Bus namespace (without .servicebus.windows.net)
+        namespace: myservicebus
+
+        # Target messages per replica
+        # Scale up when queue length > messageCount * currentReplicas
+        messageCount: "5"
+
+        # Optional: Use active message count only (excludes dead-letter)
+        # activationMessageCount: "1"
+
+        # Optional: Connection string from secret (alternative to Workload Identity)
+        # connectionFromEnv: SERVICEBUS_CONNECTION_STRING
+
+      # Use Workload Identity for authentication
+      authenticationRef:
+        name: azure-servicebus-auth
+
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: azure-servicebus-auth
+  namespace: app-team-a-prod
+spec:
+  podIdentity:
+    provider: azure-workload
+    # Client ID of the Managed Identity with Service Bus access
+    identityId: "${MANAGED_IDENTITY_CLIENT_ID}"
+
+---
+# Example deployment that will be scaled
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-processor
+  namespace: app-team-a-prod
+  labels:
+    app: order-processor
+    azure.workload.identity/use: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-processor
+  template:
+    metadata:
+      labels:
+        app: order-processor
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: order-processor-sa
+      containers:
+        - name: processor
+          image: myacr.azurecr.io/order-processor:latest
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+          env:
+            - name: SERVICEBUS_NAMESPACE
+              value: "myservicebus.servicebus.windows.net"
+            - name: QUEUE_NAME
+              value: "orders"
+            - name: AZURE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: order-processor-identity
+                  key: clientId
+
+---
+# Service Account for Workload Identity
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: order-processor-sa
+  namespace: app-team-a-prod
+  annotations:
+    azure.workload.identity/client-id: "${MANAGED_IDENTITY_CLIENT_ID}"

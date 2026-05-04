@@ -1,0 +1,82 @@
+# Chaos Mesh - Pod Failure Experiment
+#
+# This experiment randomly kills pods to test application resilience.
+# Only run in dev/test environments!
+#
+# Prerequisites:
+# - Chaos Mesh installed in the cluster
+# - Target namespace labeled for chaos testing
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: pod-failure-test
+  namespace: chaos-testing
+  labels:
+    experiment: resilience
+    type: pod-failure
+spec:
+  # Action: pod-failure kills the pod
+  action: pod-failure
+  
+  # Mode: one = kill one random pod matching selector
+  # Options: one, all, fixed, fixed-percent, random-max-percent
+  mode: one
+  
+  # Duration of the chaos (pod will be killed, then experiment ends)
+  duration: "60s"
+  
+  # Target selection
+  selector:
+    namespaces:
+      - app-team-a-dev  # ONLY dev environment!
+    labelSelectors:
+      app: api-gateway
+  
+  # Optional: Schedule recurring experiments
+  # scheduler:
+  #   cron: "@every 2h"
+
+---
+# Pod Kill Experiment (immediate termination)
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: pod-kill-test
+  namespace: chaos-testing
+  labels:
+    experiment: resilience
+    type: pod-kill
+spec:
+  action: pod-kill
+  mode: one
+  duration: "30s"
+  selector:
+    namespaces:
+      - app-team-a-dev
+    labelSelectors:
+      app: order-service
+  # Grace period for termination (0 = immediate)
+  gracePeriod: 0
+
+---
+# Container Kill Experiment (kill specific container in pod)
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: container-kill-test
+  namespace: chaos-testing
+  labels:
+    experiment: resilience
+    type: container-kill
+spec:
+  action: container-kill
+  mode: one
+  duration: "60s"
+  selector:
+    namespaces:
+      - app-team-a-dev
+    labelSelectors:
+      app: api-gateway
+  containerNames:
+    - api-gateway  # Specific container to kill

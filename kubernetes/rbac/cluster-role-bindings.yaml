@@ -1,0 +1,56 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: platform-admin-binding
+  labels:
+    app.kubernetes.io/name: platform-rbac
+    app.kubernetes.io/component: cluster-role-binding
+  annotations:
+    description: "Binds platform-admin role to Platform Admin Azure AD group"
+subjects:
+  # Azure AD Group: Platform Admins
+  # Replace with your actual Azure AD group object ID
+  - kind: Group
+    name: "00000000-0000-0000-0000-000000000001"  # platform-admins group
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: platform-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: reader-binding
+  labels:
+    app.kubernetes.io/name: platform-rbac
+    app.kubernetes.io/component: cluster-role-binding
+  annotations:
+    description: "Binds reader role to all authenticated users for cluster-wide read access"
+subjects:
+  # Azure AD Group: All Developers (read-only cluster access)
+  - kind: Group
+    name: "00000000-0000-0000-0000-000000000002"  # all-developers group
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: reader
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: developer-cluster-binding
+  labels:
+    app.kubernetes.io/name: platform-rbac
+    app.kubernetes.io/component: cluster-role-binding
+  annotations:
+    description: "Binds developer cluster-level role to developers"
+subjects:
+  - kind: Group
+    name: "00000000-0000-0000-0000-000000000002"  # all-developers group
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: developer
+  apiGroup: rbac.authorization.k8s.io

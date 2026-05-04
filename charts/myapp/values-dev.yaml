@@ -1,0 +1,87 @@
+# Development environment values
+# Usage: helm install myapp ./charts/myapp -f values-dev.yaml
+
+# Reduced replicas for dev
+replicaCount: 1
+
+# Dev image registry
+image:
+  registry: contosodevacr.azurecr.io
+  repository: myapp
+  pullPolicy: Always  # Always pull in dev for latest changes
+
+# Smaller resources for dev
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+# Disable autoscaling in dev
+autoscaling:
+  enabled: false
+
+# Disable PDB in dev (single replica)
+podDisruptionBudget:
+  enabled: false
+
+# Dev ingress
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging  # Use staging in dev
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: app.dev.contoso.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: app-dev-tls
+      hosts:
+        - app.dev.contoso.com
+
+# Dev environment variables
+env:
+  - name: LOG_LEVEL
+    value: debug
+  - name: ENVIRONMENT
+    value: development
+
+# Workload Identity for dev
+workloadIdentity:
+  enabled: true
+  tenantId: "${AZURE_TENANT_ID}"
+  clientId: "${DEV_WORKLOAD_IDENTITY_CLIENT_ID}"
+
+# Secrets from dev Key Vault
+secrets:
+  enabled: true
+  keyVaultName: contoso-dev-kv
+  objects:
+    - objectName: database-connection-string
+      objectType: secret
+      objectAlias: DATABASE_URL
+    - objectName: api-key
+      objectType: secret
+      objectAlias: API_KEY
+
+# Relaxed network policy for dev
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+        - namespaceSelector: {}  # Allow from any namespace in dev
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - {}  # Allow all egress in dev
+
+# ServiceMonitor enabled
+serviceMonitor:
+  enabled: true
+  interval: 60s  # Less frequent in dev

@@ -1,0 +1,68 @@
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars.json
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Keep tfvars templates but ignore sensitive ones
+!*.tfvars.example
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets - NEVER commit these
+*.pem
+*.key
+*secret*
+*credential*
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Build artifacts
+dist/
+build/
+
+# Node modules (if any tooling uses it)
+node_modules/
+
+# Python (if any tooling uses it)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Helm
+charts/*/charts/
+*.tgz
+
+# Kiro
+.kiro/cache/

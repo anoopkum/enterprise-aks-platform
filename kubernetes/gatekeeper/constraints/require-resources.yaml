@@ -1,0 +1,26 @@
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequireResources
+metadata:
+  name: require-resource-limits
+  annotations:
+    description: Requires all containers to have resource requests and limits
+spec:
+  # Start in audit mode, switch to deny after validation
+  enforcementAction: warn
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+      - apiGroups: ["apps"]
+        kinds: ["Deployment", "DaemonSet", "StatefulSet", "ReplicaSet"]
+    excludedNamespaces:
+      - kube-system
+      - gatekeeper-system
+      - azure-arc
+  parameters:
+    exemptImages:
+      - "mcr.microsoft.com/*"
+    requireLimits: true
+    resources:
+      - cpu
+      - memory

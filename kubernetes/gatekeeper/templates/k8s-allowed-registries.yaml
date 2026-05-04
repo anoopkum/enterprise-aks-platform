@@ -1,0 +1,84 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8sallowedregistries
+  annotations:
+    description: >-
+      Restricts container images to come from approved registries only.
+      This prevents pulling images from untrusted sources.
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sAllowedRegistries
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            allowedRegistries:
+              description: List of allowed container registries
+              type: array
+              items:
+                type: string
+            exemptImages:
+              description: >-
+                List of container images that are exempt from this policy.
+                Supports glob patterns.
+              type: array
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sallowedregistries
+
+        import future.keywords.in
+
+        violation[{"msg": msg}] {
+          container := input_containers[_]
+          not is_exempt(container)
+          not is_allowed_registry(container.image)
+          msg := sprintf("Container '%v' uses image '%v' from a disallowed registry. Allowed registries: %v", [container.name, container.image, get_allowed_registries])
+        }
+
+        input_containers[c] {
+          c := input.review.object.spec.containers[_]
+        }
+
+        input_containers[c] {
+          c := input.review.object.spec.initContainers[_]
+        }
+
+        input_containers[c] {
+          c := input.review.object.spec.ephemeralContainers[_]
+        }
+
+        is_allowed_registry(image) {
+          allowed := get_allowed_registries[_]
+          startswith(image, allowed)
+        }
+
+        # Handle images without registry prefix (docker.io default)
+        is_allowed_registry(image) {
+          not contains(image, "/")
+          allowed := get_allowed_registries[_]
+          allowed == "docker.io"
+        }
+
+        is_allowed_registry(image) {
+          not contains(split(image, "/")[0], ".")
+          not contains(split(image, "/")[0], ":")
+          count(split(image, "/")) == 2
+          allowed := get_allowed_registries[_]
+          allowed == "docker.io"
+        }
+
+        get_allowed_registries = registries {
+          registries := object.get(input, ["parameters", "allowedRegistries"], [])
+        }
+
+        is_exempt(container) {
+          exempt_images := object.get(input, ["parameters", "exemptImages"], [])
+          img := container.image
+          glob.match(exempt_images[_], ["/"], img)
+        }

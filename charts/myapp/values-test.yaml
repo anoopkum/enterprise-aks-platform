@@ -1,0 +1,84 @@
+# Test environment values
+# Usage: helm install myapp ./charts/myapp -f values-test.yaml
+
+# Production-like replicas for testing
+replicaCount: 2
+
+# Test image registry
+image:
+  registry: contosotestacr.azurecr.io
+  repository: myapp
+  pullPolicy: IfNotPresent
+
+# Production-like resources
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Enable autoscaling for load testing
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Enable PDB
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Test ingress
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging  # Use staging for test
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: app.test.contoso.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: app-test-tls
+      hosts:
+        - app.test.contoso.com
+
+# Test environment variables
+env:
+  - name: LOG_LEVEL
+    value: info
+  - name: ENVIRONMENT
+    value: test
+
+# Workload Identity for test
+workloadIdentity:
+  enabled: true
+  tenantId: "${AZURE_TENANT_ID}"
+  clientId: "${TEST_WORKLOAD_IDENTITY_CLIENT_ID}"
+
+# Secrets from test Key Vault
+secrets:
+  enabled: true
+  keyVaultName: contoso-test-kv
+  objects:
+    - objectName: database-connection-string
+      objectType: secret
+      objectAlias: DATABASE_URL
+    - objectName: api-key
+      objectType: secret
+      objectAlias: API_KEY
+
+# Production-like network policy
+networkPolicy:
+  enabled: true
+
+# ServiceMonitor enabled
+serviceMonitor:
+  enabled: true
+  interval: 30s

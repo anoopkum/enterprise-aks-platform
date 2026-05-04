@@ -1,0 +1,165 @@
+# Production environment values
+# Usage: helm install myapp ./charts/myapp -f values-prod.yaml
+
+# Production replicas
+replicaCount: 3
+
+# Production image registry
+image:
+  registry: contosoprodacr.azurecr.io
+  repository: myapp
+  pullPolicy: IfNotPresent
+
+# Production resources
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+# Production autoscaling
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+        - type: Pods
+          value: 4
+          periodSeconds: 15
+      selectPolicy: Max
+
+# Production PDB
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+# Production ingress
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+  hosts:
+    - host: app.contoso.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: app-prod-tls
+      hosts:
+        - app.contoso.com
+
+# Production environment variables
+env:
+  - name: LOG_LEVEL
+    value: warn
+  - name: ENVIRONMENT
+    value: production
+
+# Workload Identity for production
+workloadIdentity:
+  enabled: true
+  tenantId: "${AZURE_TENANT_ID}"
+  clientId: "${PROD_WORKLOAD_IDENTITY_CLIENT_ID}"
+
+# Secrets from production Key Vault
+secrets:
+  enabled: true
+  keyVaultName: contoso-prod-kv
+  syncSecrets: true  # Sync to Kubernetes secrets for env vars
+  objects:
+    - objectName: database-connection-string
+      objectType: secret
+      objectAlias: DATABASE_URL
+    - objectName: api-key
+      objectType: secret
+      objectAlias: API_KEY
+    - objectName: encryption-key
+      objectType: secret
+      objectAlias: ENCRYPTION_KEY
+
+# Strict network policy for production
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: opentelemetry
+      ports:
+        - protocol: TCP
+          port: 4317
+    - to:
+        - ipBlock:
+            cidr: 10.1.5.0/24  # Private endpoints subnet only
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 5432
+
+# ServiceMonitor with production settings
+serviceMonitor:
+  enabled: true
+  interval: 15s
+  scrapeTimeout: 10s
+
+# Production affinity - spread across zones
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: myapp
+        topologyKey: kubernetes.io/hostname
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: myapp
+          topologyKey: topology.kubernetes.io/zone
+
+# Topology spread for zone distribution
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: DoNotSchedule
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: myapp

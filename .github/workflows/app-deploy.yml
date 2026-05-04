@@ -1,0 +1,363 @@
+name: Application Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'Dockerfile'
+      - 'charts/**'
+      - '.github/workflows/app-deploy.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'Dockerfile'
+      - 'charts/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        type: choice
+        options:
+          - dev
+          - test
+          - prod
+      image_tag:
+        description: 'Image tag to deploy (leave empty for latest)'
+        required: false
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+  packages: write
+  security-events: write
+
+env:
+  REGISTRY_DEV: contosodevacr.azurecr.io
+  REGISTRY_TEST: contosotestacr.azurecr.io
+  REGISTRY_PROD: contosoprodacr.azurecr.io
+  IMAGE_NAME: myapp
+  HELM_VERSION: '3.13.0'
+
+jobs:
+  # Build and test
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
+      image_digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Generate image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY_DEV }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login to ACR (Dev)
+        run: az acr login --name contosodevacr
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: true
+          sbom: true
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY_DEV }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          vuln-type: 'os,library'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.REGISTRY_DEV }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.spdx.json
+
+  # Deploy to dev
+  deploy-dev:
+    name: Deploy to Dev
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group contoso-dev-uksouth-rg-aks \
+            --name contoso-dev-uksouth-aks \
+            --overwrite-existing
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install ${{ env.IMAGE_NAME }} ./charts/myapp \
+            --namespace app-team-a-dev \
+            --create-namespace \
+            -f ./charts/myapp/values-dev.yaml \
+            --set image.tag=${{ needs.build.outputs.image_tag }} \
+            --set workloadIdentity.tenantId=${{ secrets.AZURE_TENANT_ID }} \
+            --set workloadIdentity.clientId=${{ secrets.DEV_WORKLOAD_IDENTITY_CLIENT_ID }} \
+            --wait \
+            --timeout 5m
+
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/${{ env.IMAGE_NAME }} \
+            -n app-team-a-dev \
+            --timeout=5m
+
+  # Deploy to test
+  deploy-test:
+    name: Deploy to Test
+    runs-on: ubuntu-latest
+    needs: [build, deploy-dev]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Copy image to test ACR
+        run: |
+          az acr import \
+            --name contosotestacr \
+            --source ${{ env.REGISTRY_DEV }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.image_tag }} \
+            --image ${{ env.IMAGE_NAME }}:${{ needs.build.outputs.image_tag }}
+
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group contoso-test-uksouth-rg-aks \
+            --name contoso-test-uksouth-aks \
+            --overwrite-existing
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install ${{ env.IMAGE_NAME }} ./charts/myapp \
+            --namespace app-team-a-test \
+            --create-namespace \
+            -f ./charts/myapp/values-test.yaml \
+            --set image.registry=${{ env.REGISTRY_TEST }} \
+            --set image.tag=${{ needs.build.outputs.image_tag }} \
+            --set workloadIdentity.tenantId=${{ secrets.AZURE_TENANT_ID }} \
+            --set workloadIdentity.clientId=${{ secrets.TEST_WORKLOAD_IDENTITY_CLIENT_ID }} \
+            --wait \
+            --timeout 5m
+
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/${{ env.IMAGE_NAME }} \
+            -n app-team-a-test \
+            --timeout=5m
+
+  # Deploy to prod (canary)
+  deploy-prod-canary:
+    name: Deploy to Prod (Canary)
+    runs-on: ubuntu-latest
+    needs: [build, deploy-test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: prod-canary
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Copy image to prod ACR
+        run: |
+          az acr import \
+            --name contosoprodacr \
+            --source ${{ env.REGISTRY_TEST }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.image_tag }} \
+            --image ${{ env.IMAGE_NAME }}:${{ needs.build.outputs.image_tag }}
+
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group contoso-prod-uksouth-rg-aks \
+            --name contoso-prod-uksouth-aks \
+            --overwrite-existing
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Deploy canary (10%)
+        run: |
+          helm upgrade --install ${{ env.IMAGE_NAME }}-canary ./charts/myapp \
+            --namespace app-team-a-prod \
+            --create-namespace \
+            -f ./charts/myapp/values-prod.yaml \
+            --set image.registry=${{ env.REGISTRY_PROD }} \
+            --set image.tag=${{ needs.build.outputs.image_tag }} \
+            --set replicaCount=1 \
+            --set autoscaling.enabled=false \
+            --set workloadIdentity.tenantId=${{ secrets.AZURE_TENANT_ID }} \
+            --set workloadIdentity.clientId=${{ secrets.PROD_WORKLOAD_IDENTITY_CLIENT_ID }} \
+            --wait \
+            --timeout 5m
+
+      - name: Verify canary deployment
+        run: |
+          kubectl rollout status deployment/${{ env.IMAGE_NAME }}-canary \
+            -n app-team-a-prod \
+            --timeout=5m
+
+      - name: Monitor canary (5 minutes)
+        run: |
+          echo "Monitoring canary deployment for 5 minutes..."
+          sleep 300
+          
+          # Check for errors in canary pods
+          ERROR_COUNT=$(kubectl logs -l app.kubernetes.io/instance=${{ env.IMAGE_NAME }}-canary \
+            -n app-team-a-prod \
+            --since=5m | grep -c "ERROR" || true)
+          
+          if [ "$ERROR_COUNT" -gt 10 ]; then
+            echo "Too many errors detected in canary. Failing deployment."
+            exit 1
+          fi
+          
+          echo "Canary looks healthy. Proceeding to full rollout."
+
+  # Deploy to prod (full)
+  deploy-prod-full:
+    name: Deploy to Prod (Full)
+    runs-on: ubuntu-latest
+    needs: [build, deploy-prod-canary]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: prod
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group contoso-prod-uksouth-rg-aks \
+            --name contoso-prod-uksouth-aks \
+            --overwrite-existing
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Deploy full production
+        run: |
+          helm upgrade --install ${{ env.IMAGE_NAME }} ./charts/myapp \
+            --namespace app-team-a-prod \
+            -f ./charts/myapp/values-prod.yaml \
+            --set image.registry=${{ env.REGISTRY_PROD }} \
+            --set image.tag=${{ needs.build.outputs.image_tag }} \
+            --set workloadIdentity.tenantId=${{ secrets.AZURE_TENANT_ID }} \
+            --set workloadIdentity.clientId=${{ secrets.PROD_WORKLOAD_IDENTITY_CLIENT_ID }} \
+            --wait \
+            --timeout 10m
+
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/${{ env.IMAGE_NAME }} \
+            -n app-team-a-prod \
+            --timeout=10m
+
+      - name: Remove canary
+        run: |
+          helm uninstall ${{ env.IMAGE_NAME }}-canary \
+            --namespace app-team-a-prod \
+            --wait || true
+
+      - name: Create deployment annotation
+        run: |
+          kubectl annotate deployment/${{ env.IMAGE_NAME }} \
+            -n app-team-a-prod \
+            kubernetes.io/change-cause="Deployed ${{ needs.build.outputs.image_tag }} via GitHub Actions" \
+            --overwrite

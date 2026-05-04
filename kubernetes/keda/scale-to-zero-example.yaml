@@ -1,0 +1,248 @@
+# KEDA Scale-to-Zero Examples
+#
+# These examples demonstrate how to configure workloads that can
+# scale down to zero replicas when idle, saving costs for
+# batch processing and event-driven workloads.
+#
+# Prerequisites:
+# - KEDA installed with Azure Workload Identity enabled
+# - Appropriate Azure RBAC permissions for the managed identity
+
+---
+# Example 1: Azure Storage Queue - Batch Job Processor
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: batch-processor-scaler
+  namespace: app-team-a-prod
+  labels:
+    app: batch-processor
+    scaler: azure-queue
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: batch-processor
+
+  # Check queue every 30 seconds
+  pollingInterval: 30
+
+  # Wait 5 minutes of inactivity before scaling to zero
+  cooldownPeriod: 300
+
+  # Enable scale to zero
+  minReplicaCount: 0
+  maxReplicaCount: 20
+
+  # Idle replica count (optional, defaults to minReplicaCount)
+  idleReplicaCount: 0
+
+  triggers:
+    - type: azure-queue
+      metadata:
+        # Storage account name
+        accountName: mystorageaccount
+
+        # Queue name
+        queueName: batch-jobs
+
+        # Scale up when any messages exist
+        queueLength: "1"
+
+        # Activation queue length (messages needed to scale from 0)
+        activationQueueLength: "1"
+
+      authenticationRef:
+        name: azure-storage-auth
+
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: azure-storage-auth
+  namespace: app-team-a-prod
+spec:
+  podIdentity:
+    provider: azure-workload
+    identityId: "${MANAGED_IDENTITY_CLIENT_ID}"
+
+---
+# Example 2: Cron-based Scaling (Scale to zero outside business hours)
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: business-hours-scaler
+  namespace: app-team-a-dev
+  labels:
+    app: dev-api
+    scaler: cron
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: dev-api
+
+  pollingInterval: 60
+  cooldownPeriod: 300
+  minReplicaCount: 0
+  maxReplicaCount: 5
+
+  triggers:
+    # Scale up during business hours (Mon-Fri 8am-6pm UTC)
+    - type: cron
+      metadata:
+        timezone: UTC
+        start: "0 8 * * 1-5"    # 8:00 AM Mon-Fri
+        end: "0 18 * * 1-5"     # 6:00 PM Mon-Fri
+        desiredReplicas: "2"
+
+---
+# Example 3: Azure Event Hub Consumer (Scale to zero when no events)
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: event-processor-scaler
+  namespace: app-team-a-prod
+  labels:
+    app: event-processor
+    scaler: azure-eventhub
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: event-processor
+
+  pollingInterval: 10
+  cooldownPeriod: 120
+  minReplicaCount: 0
+  maxReplicaCount: 32  # Match partition count for optimal parallelism
+
+  triggers:
+    - type: azure-eventhub
+      metadata:
+        # Consumer group
+        consumerGroup: "$Default"
+
+        # Unprocessed events threshold per partition
+        unprocessedEventThreshold: "64"
+
+        # Activation threshold (events needed to scale from 0)
+        activationUnprocessedEventThreshold: "1"
+
+        # Blob container for checkpoints
+        blobContainer: eventhub-checkpoints
+
+      authenticationRef:
+        name: azure-eventhub-auth
+
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: azure-eventhub-auth
+  namespace: app-team-a-prod
+spec:
+  podIdentity:
+    provider: azure-workload
+    identityId: "${MANAGED_IDENTITY_CLIENT_ID}"
+
+---
+# Example 4: Scheduled Job with Scale-to-Zero
+# Useful for periodic batch processing
+apiVersion: keda.sh/v1alpha1
+kind: ScaledJob
+metadata:
+  name: nightly-report-generator
+  namespace: app-team-a-prod
+  labels:
+    app: report-generator
+    scaler: cron
+spec:
+  jobTargetRef:
+    parallelism: 1
+    completions: 1
+    backoffLimit: 3
+    template:
+      spec:
+        serviceAccountName: report-generator-sa
+        restartPolicy: Never
+        containers:
+          - name: report-generator
+            image: myacr.azurecr.io/report-generator:latest
+            resources:
+              requests:
+                cpu: "500m"
+                memory: "1Gi"
+              limits:
+                cpu: "2"
+                memory: "4Gi"
+            env:
+              - name: REPORT_DATE
+                value: "yesterday"
+
+  pollingInterval: 60
+  minReplicaCount: 0
+  maxReplicaCount: 1
+
+  # Clean up completed jobs after 1 hour
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+
+  triggers:
+    # Run at 2 AM UTC daily
+    - type: cron
+      metadata:
+        timezone: UTC
+        start: "0 2 * * *"
+        end: "30 2 * * *"
+        desiredReplicas: "1"
+
+---
+# Example 5: Multi-trigger with fallback
+# Scale based on queue OR minimum during business hours
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: hybrid-scaler
+  namespace: app-team-a-prod
+  labels:
+    app: order-api
+    scaler: hybrid
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: order-api
+
+  pollingInterval: 15
+  cooldownPeriod: 300
+  minReplicaCount: 0
+  maxReplicaCount: 50
+
+  triggers:
+    # Primary: Scale based on queue depth
+    - type: azure-servicebus
+      metadata:
+        queueName: orders
+        namespace: myservicebus
+        messageCount: "10"
+      authenticationRef:
+        name: azure-servicebus-auth
+
+    # Secondary: Maintain minimum during business hours
+    - type: cron
+      metadata:
+        timezone: Europe/London
+        start: "0 9 * * 1-5"
+        end: "0 17 * * 1-5"
+        desiredReplicas: "3"
+
+---
+# Service Account for Workload Identity
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: report-generator-sa
+  namespace: app-team-a-prod
+  annotations:
+    azure.workload.identity/client-id: "${MANAGED_IDENTITY_CLIENT_ID}"

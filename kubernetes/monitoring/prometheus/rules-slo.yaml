@@ -1,0 +1,95 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: slo-monitoring
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: slo-monitoring
+    app.kubernetes.io/component: alerting
+    prometheus: kube-prometheus
+    role: alert-rules
+spec:
+  groups:
+    - name: slo.rules
+      interval: 30s
+      rules:
+        # Error rate SLI (requests returning 5xx)
+        - record: slo:http_request_error_rate:ratio_rate5m
+          expr: |
+            sum(rate(http_requests_total{status=~"5.."}[5m])) by (namespace, service)
+            /
+            sum(rate(http_requests_total[5m])) by (namespace, service)
+
+        # Latency SLI (p99 latency)
+        - record: slo:http_request_latency_p99:histogram_quantile
+          expr: |
+            histogram_quantile(0.99, 
+              sum(rate(http_request_duration_seconds_bucket[5m])) by (namespace, service, le)
+            )
+
+        # Availability SLI
+        - record: slo:service_availability:ratio_rate5m
+          expr: |
+            1 - (
+              sum(rate(http_requests_total{status=~"5.."}[5m])) by (namespace, service)
+              /
+              sum(rate(http_requests_total[5m])) by (namespace, service)
+            )
+
+        # Error budget remaining (assuming 99.9% SLO)
+        - record: slo:error_budget_remaining:ratio
+          expr: |
+            1 - (
+              slo:http_request_error_rate:ratio_rate5m / 0.001
+            )
+
+    - name: slo.alerts
+      rules:
+        # Error budget burn rate alert (fast burn)
+        - alert: SLOErrorBudgetFastBurn
+          expr: |
+            slo:http_request_error_rate:ratio_rate5m > (14.4 * 0.001)
+          for: 2m
+          labels:
+            severity: critical
+            category: slo
+          annotations:
+            summary: "High error rate burning through error budget quickly"
+            description: "Service {{ $labels.service }} in namespace {{ $labels.namespace }} is burning error budget at 14.4x the allowed rate"
+            runbook_url: "https://wiki.internal/runbooks/slo-error-budget"
+
+        # Error budget burn rate alert (slow burn)
+        - alert: SLOErrorBudgetSlowBurn
+          expr: |
+            slo:http_request_error_rate:ratio_rate5m > (3 * 0.001)
+          for: 15m
+          labels:
+            severity: warning
+            category: slo
+          annotations:
+            summary: "Elevated error rate consuming error budget"
+            description: "Service {{ $labels.service }} in namespace {{ $labels.namespace }} is burning error budget at 3x the allowed rate"
+
+        # Latency SLO breach
+        - alert: SLOLatencyBreach
+          expr: |
+            slo:http_request_latency_p99:histogram_quantile > 0.5
+          for: 5m
+          labels:
+            severity: warning
+            category: slo
+          annotations:
+            summary: "P99 latency exceeds SLO threshold"
+            description: "Service {{ $labels.service }} in namespace {{ $labels.namespace }} has p99 latency of {{ $value }}s (threshold: 500ms)"
+
+        # Error budget exhausted
+        - alert: SLOErrorBudgetExhausted
+          expr: |
+            slo:error_budget_remaining:ratio < 0
+          for: 1m
+          labels:
+            severity: critical
+            category: slo
+          annotations:
+            summary: "Error budget exhausted"
+            description: "Service {{ $labels.service }} in namespace {{ $labels.namespace }} has exhausted its error budget"

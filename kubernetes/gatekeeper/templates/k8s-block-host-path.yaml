@@ -1,0 +1,75 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8sblockhostpath
+  annotations:
+    description: >-
+      Blocks the use of hostPath volumes. HostPath volumes can expose
+      sensitive host filesystem paths to containers.
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sBlockHostPath
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            allowedPaths:
+              description: >-
+                List of allowed hostPath paths. If empty, all hostPath
+                volumes are blocked.
+              type: array
+              items:
+                type: object
+                properties:
+                  pathPrefix:
+                    type: string
+                  readOnly:
+                    type: boolean
+                    default: true
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sblockhostpath
+
+        import future.keywords.in
+
+        violation[{"msg": msg}] {
+          volume := input.review.object.spec.volumes[_]
+          volume.hostPath
+          not is_allowed_path(volume.hostPath.path)
+          msg := sprintf("HostPath volume '%v' with path '%v' is not allowed", [volume.name, volume.hostPath.path])
+        }
+
+        violation[{"msg": msg}] {
+          volume := input.review.object.spec.volumes[_]
+          volume.hostPath
+          allowed := is_allowed_path_config(volume.hostPath.path)
+          allowed.readOnly == true
+          container := input_containers[_]
+          mount := container.volumeMounts[_]
+          mount.name == volume.name
+          not mount.readOnly
+          msg := sprintf("HostPath volume '%v' must be mounted as readOnly", [volume.name])
+        }
+
+        input_containers[c] {
+          c := input.review.object.spec.containers[_]
+        }
+
+        input_containers[c] {
+          c := input.review.object.spec.initContainers[_]
+        }
+
+        is_allowed_path(path) {
+          allowed_paths := object.get(input, ["parameters", "allowedPaths"], [])
+          allowed := allowed_paths[_]
+          startswith(path, allowed.pathPrefix)
+        }
+
+        is_allowed_path_config(path) = config {
+          allowed_paths := object.get(input, ["parameters", "allowedPaths"], [])
+          config := allowed_paths[_]
+          startswith(path, config.pathPrefix)
+        }

@@ -1,0 +1,203 @@
+# Velero Backup Schedules
+#
+# These schedules define automated backups for the AKS cluster.
+# Backups are stored in Azure Blob Storage with GRS replication.
+#
+# Prerequisites:
+# - Velero installed with Azure plugin
+# - Storage account configured for backups
+# - Appropriate RBAC permissions
+
+---
+# Hourly backup of application namespaces
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: hourly-app-backup
+  namespace: velero
+  labels:
+    backup-type: scheduled
+    frequency: hourly
+spec:
+  # Run every hour at minute 0
+  schedule: "0 * * * *"
+  
+  # Use paused: true to temporarily disable
+  # paused: false
+  
+  template:
+    # Include application namespaces
+    includedNamespaces:
+      - app-team-a-dev
+      - app-team-a-test
+      - app-team-a-prod
+      - app-team-b-dev
+      - app-team-b-test
+      - app-team-b-prod
+    
+    # Exclude specific resources if needed
+    excludedResources:
+      - events
+      - events.events.k8s.io
+    
+    # Include cluster-scoped resources referenced by namespaced resources
+    includeClusterResources: true
+    
+    # Backup persistent volumes using file system backup
+    defaultVolumesToFsBackup: true
+    
+    # Also create volume snapshots
+    snapshotVolumes: true
+    
+    # Retention period (30 days)
+    ttl: 720h
+    
+    # Storage location (default)
+    storageLocation: azure
+    
+    # Volume snapshot location
+    volumeSnapshotLocations:
+      - azure
+    
+    # Labels for backup identification
+    metadata:
+      labels:
+        backup-type: scheduled
+        frequency: hourly
+        environment: all
+
+---
+# Daily full backup including system namespaces
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: daily-full-backup
+  namespace: velero
+  labels:
+    backup-type: scheduled
+    frequency: daily
+spec:
+  # Run at 2 AM UTC daily
+  schedule: "0 2 * * *"
+  
+  template:
+    # Include all namespaces
+    includedNamespaces:
+      - "*"
+    
+    # Exclude system namespaces that shouldn't be restored
+    excludedNamespaces:
+      - kube-system
+      - kube-public
+      - kube-node-lease
+      - velero
+      - gatekeeper-system
+    
+    excludedResources:
+      - events
+      - events.events.k8s.io
+    
+    includeClusterResources: true
+    defaultVolumesToFsBackup: true
+    snapshotVolumes: true
+    
+    # Longer retention for daily backups (90 days)
+    ttl: 2160h
+    
+    storageLocation: azure
+    volumeSnapshotLocations:
+      - azure
+    
+    metadata:
+      labels:
+        backup-type: scheduled
+        frequency: daily
+        environment: all
+
+---
+# Weekly backup with extended retention
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: weekly-archive-backup
+  namespace: velero
+  labels:
+    backup-type: scheduled
+    frequency: weekly
+spec:
+  # Run at 3 AM UTC every Sunday
+  schedule: "0 3 * * 0"
+  
+  template:
+    includedNamespaces:
+      - "*"
+    
+    excludedNamespaces:
+      - kube-system
+      - kube-public
+      - kube-node-lease
+      - velero
+    
+    excludedResources:
+      - events
+      - events.events.k8s.io
+    
+    includeClusterResources: true
+    defaultVolumesToFsBackup: true
+    snapshotVolumes: true
+    
+    # Extended retention for weekly backups (1 year)
+    ttl: 8760h
+    
+    storageLocation: azure
+    volumeSnapshotLocations:
+      - azure
+    
+    metadata:
+      labels:
+        backup-type: scheduled
+        frequency: weekly
+        environment: all
+        compliance: long-term
+
+---
+# Production-only backup with shorter interval
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: production-backup
+  namespace: velero
+  labels:
+    backup-type: scheduled
+    frequency: 15min
+    environment: production
+spec:
+  # Run every 15 minutes for production
+  schedule: "*/15 * * * *"
+  
+  template:
+    # Only production namespaces
+    includedNamespaces:
+      - app-team-a-prod
+      - app-team-b-prod
+    
+    excludedResources:
+      - events
+      - events.events.k8s.io
+    
+    includeClusterResources: false
+    defaultVolumesToFsBackup: true
+    snapshotVolumes: true
+    
+    # Shorter retention for frequent backups (7 days)
+    ttl: 168h
+    
+    storageLocation: azure
+    volumeSnapshotLocations:
+      - azure
+    
+    metadata:
+      labels:
+        backup-type: scheduled
+        frequency: 15min
+        environment: production

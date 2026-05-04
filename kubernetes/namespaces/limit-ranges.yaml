@@ -1,0 +1,203 @@
+# LimitRanges for application namespaces
+# Sets default resource requests/limits for containers
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: limit-range
+  namespace: app-team-a-dev
+  labels:
+    app.kubernetes.io/name: limit-range
+    environment: dev
+spec:
+  limits:
+    # Default limits for containers
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      min:
+        cpu: 10m
+        memory: 16Mi
+      max:
+        cpu: 2
+        memory: 4Gi
+    # Limits for pods
+    - type: Pod
+      max:
+        cpu: 4
+        memory: 8Gi
+    # Limits for PVCs
+    - type: PersistentVolumeClaim
+      min:
+        storage: 1Gi
+      max:
+        storage: 50Gi
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: limit-range
+  namespace: app-team-b-dev
+  labels:
+    app.kubernetes.io/name: limit-range
+    environment: dev
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      min:
+        cpu: 10m
+        memory: 16Mi
+      max:
+        cpu: 2
+        memory: 4Gi
+    - type: Pod
+      max:
+        cpu: 4
+        memory: 8Gi
+    - type: PersistentVolumeClaim
+      min:
+        storage: 1Gi
+      max:
+        storage: 50Gi
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: limit-range
+  namespace: app-team-a-test
+  labels:
+    app.kubernetes.io/name: limit-range
+    environment: test
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      min:
+        cpu: 10m
+        memory: 16Mi
+      max:
+        cpu: 4
+        memory: 8Gi
+    - type: Pod
+      max:
+        cpu: 8
+        memory: 16Gi
+    - type: PersistentVolumeClaim
+      min:
+        storage: 1Gi
+      max:
+        storage: 100Gi
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: limit-range
+  namespace: app-team-b-test
+  labels:
+    app.kubernetes.io/name: limit-range
+    environment: test
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      min:
+        cpu: 10m
+        memory: 16Mi
+      max:
+        cpu: 4
+        memory: 8Gi
+    - type: Pod
+      max:
+        cpu: 8
+        memory: 16Gi
+    - type: PersistentVolumeClaim
+      min:
+        storage: 1Gi
+      max:
+        storage: 100Gi
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: limit-range
+  namespace: app-team-a-prod
+  labels:
+    app.kubernetes.io/name: limit-range
+    environment: prod
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 200m
+        memory: 256Mi
+      min:
+        cpu: 50m
+        memory: 64Mi
+      max:
+        cpu: 8
+        memory: 16Gi
+    - type: Pod
+      max:
+        cpu: 16
+        memory: 32Gi
+    - type: PersistentVolumeClaim
+      min:
+        storage: 1Gi
+      max:
+        storage: 500Gi
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: limit-range
+  namespace: app-team-b-prod
+  labels:
+    app.kubernetes.io/name: limit-range
+    environment: prod
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 200m
+        memory: 256Mi
+      min:
+        cpu: 50m
+        memory: 64Mi
+      max:
+        cpu: 8
+        memory: 16Gi
+    - type: Pod
+      max:
+        cpu: 16
+        memory: 32Gi
+    - type: PersistentVolumeClaim
+      min:
+        storage: 1Gi
+      max:
+        storage: 500Gi

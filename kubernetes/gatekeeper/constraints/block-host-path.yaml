@@ -1,0 +1,30 @@
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sBlockHostPath
+metadata:
+  name: block-host-path-volumes
+  annotations:
+    description: Blocks the use of hostPath volumes except for specific allowed paths
+spec:
+  # Start in audit mode, switch to deny after validation
+  enforcementAction: warn
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+      - apiGroups: ["apps"]
+        kinds: ["Deployment", "DaemonSet", "StatefulSet", "ReplicaSet"]
+    excludedNamespaces:
+      - kube-system
+      - gatekeeper-system
+      - azure-arc
+      - calico-system
+  parameters:
+    allowedPaths:
+      # Allow read-only access to specific paths for monitoring
+      - pathPrefix: "/var/log"
+        readOnly: true
+      - pathPrefix: "/var/lib/docker/containers"
+        readOnly: true
+      # Allow time sync
+      - pathPrefix: "/etc/localtime"
+        readOnly: true

@@ -1,0 +1,170 @@
+# Chaos Mesh - Network Chaos Experiments
+#
+# These experiments test application resilience to network issues.
+# Only run in dev/test environments!
+#
+# Prerequisites:
+# - Chaos Mesh installed in the cluster
+# - Target namespace labeled for chaos testing
+
+---
+# Network Latency Experiment
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: network-latency-test
+  namespace: chaos-testing
+  labels:
+    experiment: resilience
+    type: network-latency
+spec:
+  action: delay
+  mode: all
+  selector:
+    namespaces:
+      - app-team-a-dev
+    labelSelectors:
+      app: order-service
+  delay:
+    # Base latency to add
+    latency: "200ms"
+    # Correlation with previous packet (0-100)
+    correlation: "25"
+    # Random jitter added to latency
+    jitter: "50ms"
+  # Direction: to, from, or both
+  direction: both
+  duration: "5m"
+
+---
+# Network Packet Loss Experiment
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: network-loss-test
+  namespace: chaos-testing
+  labels:
+    experiment: resilience
+    type: network-loss
+spec:
+  action: loss
+  mode: all
+  selector:
+    namespaces:
+      - app-team-a-dev
+    labelSelectors:
+      app: api-gateway
+  loss:
+    # Percentage of packets to drop
+    loss: "10"
+    # Correlation with previous packet
+    correlation: "25"
+  direction: both
+  duration: "3m"
+
+---
+# Network Partition Experiment
+# Simulates network split between services
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: network-partition-test
+  namespace: chaos-testing
+  labels:
+    experiment: resilience
+    type: network-partition
+spec:
+  action: partition
+  mode: all
+  selector:
+    namespaces:
+      - app-team-a-dev
+    labelSelectors:
+      app: api-gateway
+  direction: both
+  # Target to partition from
+  target:
+    selector:
+      namespaces:
+        - app-team-a-dev
+      labelSelectors:
+        app: order-service
+  duration: "2m"
+
+---
+# Network Bandwidth Limit Experiment
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: network-bandwidth-test
+  namespace: chaos-testing
+  labels:
+    experiment: resilience
+    type: network-bandwidth
+spec:
+  action: bandwidth
+  mode: all
+  selector:
+    namespaces:
+      - app-team-a-dev
+    labelSelectors:
+      app: api-gateway
+  bandwidth:
+    # Rate limit
+    rate: "1mbps"
+    # Maximum bytes in queue
+    limit: 20000
+    # Bucket size in bytes
+    buffer: 10000
+  direction: both
+  duration: "5m"
+
+---
+# Network Corruption Experiment
+# Corrupts packets to test error handling
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: network-corrupt-test
+  namespace: chaos-testing
+  labels:
+    experiment: resilience
+    type: network-corrupt
+spec:
+  action: corrupt
+  mode: all
+  selector:
+    namespaces:
+      - app-team-a-dev
+    labelSelectors:
+      app: api-gateway
+  corrupt:
+    # Percentage of packets to corrupt
+    corrupt: "5"
+    correlation: "25"
+  direction: both
+  duration: "3m"
+
+---
+# DNS Chaos Experiment
+# Simulates DNS failures
+apiVersion: chaos-mesh.org/v1alpha1
+kind: DNSChaos
+metadata:
+  name: dns-failure-test
+  namespace: chaos-testing
+  labels:
+    experiment: resilience
+    type: dns-failure
+spec:
+  action: error
+  mode: all
+  selector:
+    namespaces:
+      - app-team-a-dev
+    labelSelectors:
+      app: api-gateway
+  # Patterns to match for DNS chaos
+  patterns:
+    - "order-service.app-team-a-dev.svc.cluster.local"
+  duration: "2m"

@@ -1,0 +1,140 @@
+# KEDA ScaledObject for HTTP Request Scaling
+#
+# This example scales a deployment based on HTTP requests per second
+# using Prometheus metrics. Useful for API gateways and web services.
+#
+# Prerequisites:
+# - KEDA installed
+# - Prometheus with application metrics
+# - Application exposing http_requests_total metric
+
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: api-gateway-scaler
+  namespace: app-team-a-prod
+  labels:
+    app: api-gateway
+    scaler: prometheus
+spec:
+  # Target deployment to scale
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-gateway
+
+  # Polling interval for checking metrics (seconds)
+  pollingInterval: 5
+
+  # Cooldown period before scaling down (seconds)
+  cooldownPeriod: 60
+
+  # Minimum replicas for high availability
+  minReplicaCount: 2
+
+  # Maximum replicas
+  maxReplicaCount: 100
+
+  # Advanced scaling behavior
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 120
+          policies:
+            - type: Percent
+              value: 10
+              periodSeconds: 60
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+            - type: Percent
+              value: 100
+              periodSeconds: 15
+            - type: Pods
+              value: 4
+              periodSeconds: 15
+          selectPolicy: Max
+
+  triggers:
+    - type: prometheus
+      metadata:
+        # Prometheus server address
+        serverAddress: http://prometheus-server.monitoring.svc.cluster.local:9090
+
+        # Metric name for identification
+        metricName: http_requests_per_second
+
+        # PromQL query to get requests per second
+        query: |
+          sum(rate(http_requests_total{deployment="api-gateway",namespace="app-team-a-prod"}[1m]))
+
+        # Threshold per replica (scale when > 100 RPS per replica)
+        threshold: "100"
+
+        # Activation threshold (minimum value to start scaling from 0)
+        activationThreshold: "10"
+
+---
+# Alternative: Scale based on response latency
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: api-gateway-latency-scaler
+  namespace: app-team-a-prod
+  labels:
+    app: api-gateway
+    scaler: prometheus-latency
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-gateway
+
+  pollingInterval: 10
+  cooldownPeriod: 120
+  minReplicaCount: 2
+  maxReplicaCount: 50
+
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus-server.monitoring.svc.cluster.local:9090
+        metricName: http_request_latency_p99
+        # Scale when P99 latency exceeds 500ms
+        query: |
+          histogram_quantile(0.99, 
+            sum(rate(http_request_duration_seconds_bucket{deployment="api-gateway"}[5m])) by (le)
+          ) * 1000
+        threshold: "500"
+
+---
+# Scale based on concurrent connections
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: websocket-server-scaler
+  namespace: app-team-a-prod
+  labels:
+    app: websocket-server
+    scaler: prometheus-connections
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: websocket-server
+
+  pollingInterval: 15
+  cooldownPeriod: 180
+  minReplicaCount: 1
+  maxReplicaCount: 30
+
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus-server.monitoring.svc.cluster.local:9090
+        metricName: active_websocket_connections
+        # Scale when > 1000 connections per replica
+        query: |
+          sum(websocket_connections_active{deployment="websocket-server"})
+        threshold: "1000"

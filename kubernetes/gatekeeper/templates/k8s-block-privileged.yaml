@@ -1,0 +1,85 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8sblockprivileged
+  annotations:
+    description: >-
+      Blocks containers from running in privileged mode. Privileged containers
+      have full access to the host and should be avoided for security reasons.
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sBlockPrivileged
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            exemptImages:
+              description: >-
+                List of container images that are exempt from this policy.
+                Supports glob patterns.
+              type: array
+              items:
+                type: string
+            allowPrivilegeEscalation:
+              description: Whether to allow privilege escalation
+              type: boolean
+              default: false
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sblockprivileged
+
+        import future.keywords.in
+
+        violation[{"msg": msg}] {
+          container := input_containers[_]
+          not is_exempt(container)
+          container.securityContext.privileged == true
+          msg := sprintf("Container '%v' must not run in privileged mode", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+          container := input_containers[_]
+          not is_exempt(container)
+          not allow_privilege_escalation
+          container.securityContext.allowPrivilegeEscalation == true
+          msg := sprintf("Container '%v' must not allow privilege escalation", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+          container := input_containers[_]
+          not is_exempt(container)
+          has_dangerous_capability(container)
+          msg := sprintf("Container '%v' has dangerous capabilities that should be dropped", [container.name])
+        }
+
+        input_containers[c] {
+          c := input.review.object.spec.containers[_]
+        }
+
+        input_containers[c] {
+          c := input.review.object.spec.initContainers[_]
+        }
+
+        input_containers[c] {
+          c := input.review.object.spec.ephemeralContainers[_]
+        }
+
+        dangerous_capabilities := {"SYS_ADMIN", "NET_ADMIN", "SYS_PTRACE", "SYS_MODULE"}
+
+        has_dangerous_capability(container) {
+          caps := container.securityContext.capabilities.add[_]
+          dangerous_capabilities[caps]
+        }
+
+        allow_privilege_escalation {
+          object.get(input, ["parameters", "allowPrivilegeEscalation"], false)
+        }
+
+        is_exempt(container) {
+          exempt_images := object.get(input, ["parameters", "exemptImages"], [])
+          img := container.image
+          glob.match(exempt_images[_], ["/"], img)
+        }

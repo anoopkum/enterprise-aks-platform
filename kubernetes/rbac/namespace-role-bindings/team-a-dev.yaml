@@ -1,0 +1,44 @@
+# Role bindings for Team A in dev namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-a-developer-binding
+  namespace: app-team-a-dev
+  labels:
+    app.kubernetes.io/name: platform-rbac
+    app.kubernetes.io/component: role-binding
+    team: team-a
+    environment: dev
+  annotations:
+    description: "Grants Team A developers full access to their dev namespace"
+subjects:
+  # Azure AD Group: Team A Developers
+  - kind: Group
+    name: "00000000-0000-0000-0000-000000000010"  # team-a-developers group
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: developer-namespace
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-a-reader-binding
+  namespace: app-team-a-dev
+  labels:
+    app.kubernetes.io/name: platform-rbac
+    app.kubernetes.io/component: role-binding
+    team: team-a
+    environment: dev
+  annotations:
+    description: "Grants Team A readers read-only access to their dev namespace"
+subjects:
+  # Azure AD Group: Team A Readers
+  - kind: Group
+    name: "00000000-0000-0000-0000-000000000011"  # team-a-readers group
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: reader
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,45 @@
+# Role bindings for Team A in prod namespace
+# More restrictive than dev - developers have limited access
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-a-developer-binding
+  namespace: app-team-a-prod
+  labels:
+    app.kubernetes.io/name: platform-rbac
+    app.kubernetes.io/component: role-binding
+    team: team-a
+    environment: prod
+  annotations:
+    description: "Grants Team A developers limited access to their prod namespace"
+subjects:
+  # Azure AD Group: Team A Developers
+  - kind: Group
+    name: "00000000-0000-0000-0000-000000000010"  # team-a-developers group
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: reader  # Read-only in prod for developers
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-a-lead-binding
+  namespace: app-team-a-prod
+  labels:
+    app.kubernetes.io/name: platform-rbac
+    app.kubernetes.io/component: role-binding
+    team: team-a
+    environment: prod
+  annotations:
+    description: "Grants Team A leads full access to their prod namespace"
+subjects:
+  # Azure AD Group: Team A Leads (senior developers with prod access)
+  - kind: Group
+    name: "00000000-0000-0000-0000-000000000012"  # team-a-leads group
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: developer-namespace
+  apiGroup: rbac.authorization.k8s.io

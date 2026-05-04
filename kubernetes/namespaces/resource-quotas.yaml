@@ -1,0 +1,136 @@
+# Resource quotas for application namespaces
+# Dev environment - smaller quotas
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: resource-quota
+  namespace: app-team-a-dev
+  labels:
+    app.kubernetes.io/name: resource-quota
+    environment: dev
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: 8Gi
+    limits.cpu: "8"
+    limits.memory: 16Gi
+    pods: "20"
+    services: "10"
+    secrets: "20"
+    configmaps: "20"
+    persistentvolumeclaims: "5"
+    services.loadbalancers: "0"
+    services.nodeports: "0"
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: resource-quota
+  namespace: app-team-b-dev
+  labels:
+    app.kubernetes.io/name: resource-quota
+    environment: dev
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: 8Gi
+    limits.cpu: "8"
+    limits.memory: 16Gi
+    pods: "20"
+    services: "10"
+    secrets: "20"
+    configmaps: "20"
+    persistentvolumeclaims: "5"
+    services.loadbalancers: "0"
+    services.nodeports: "0"
+---
+# Test environment - medium quotas
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: resource-quota
+  namespace: app-team-a-test
+  labels:
+    app.kubernetes.io/name: resource-quota
+    environment: test
+spec:
+  hard:
+    requests.cpu: "8"
+    requests.memory: 16Gi
+    limits.cpu: "16"
+    limits.memory: 32Gi
+    pods: "40"
+    services: "20"
+    secrets: "30"
+    configmaps: "30"
+    persistentvolumeclaims: "10"
+    services.loadbalancers: "0"
+    services.nodeports: "0"
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: resource-quota
+  namespace: app-team-b-test
+  labels:
+    app.kubernetes.io/name: resource-quota
+    environment: test
+spec:
+  hard:
+    requests.cpu: "8"
+    requests.memory: 16Gi
+    limits.cpu: "16"
+    limits.memory: 32Gi
+    pods: "40"
+    services: "20"
+    secrets: "30"
+    configmaps: "30"
+    persistentvolumeclaims: "10"
+    services.loadbalancers: "0"
+    services.nodeports: "0"
+---
+# Prod environment - larger quotas
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: resource-quota
+  namespace: app-team-a-prod
+  labels:
+    app.kubernetes.io/name: resource-quota
+    environment: prod
+spec:
+  hard:
+    requests.cpu: "32"
+    requests.memory: 64Gi
+    limits.cpu: "64"
+    limits.memory: 128Gi
+    pods: "100"
+    services: "50"
+    secrets: "50"
+    configmaps: "50"
+    persistentvolumeclaims: "20"
+    services.loadbalancers: "0"
+    services.nodeports: "0"
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: resource-quota
+  namespace: app-team-b-prod
+  labels:
+    app.kubernetes.io/name: resource-quota
+    environment: prod
+spec:
+  hard:
+    requests.cpu: "32"
+    requests.memory: 64Gi
+    limits.cpu: "64"
+    limits.memory: 128Gi
+    pods: "100"
+    services: "50"
+    secrets: "50"
+    configmaps: "50"
+    persistentvolumeclaims: "20"
+    services.loadbalancers: "0"
+    services.nodeports: "0"

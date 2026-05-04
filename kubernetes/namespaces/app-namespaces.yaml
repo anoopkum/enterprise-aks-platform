@@ -1,0 +1,98 @@
+# Application namespaces for Team A
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: app-team-a-dev
+  labels:
+    app.kubernetes.io/name: app-team-a
+    app.kubernetes.io/component: application
+    environment: dev
+    team: team-a
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    description: "Team A development environment"
+    owner: "team-a@contoso.com"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: app-team-a-test
+  labels:
+    app.kubernetes.io/name: app-team-a
+    app.kubernetes.io/component: application
+    environment: test
+    team: team-a
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    description: "Team A test environment"
+    owner: "team-a@contoso.com"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: app-team-a-prod
+  labels:
+    app.kubernetes.io/name: app-team-a
+    app.kubernetes.io/component: application
+    environment: prod
+    team: team-a
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    description: "Team A production environment"
+    owner: "team-a@contoso.com"
+---
+# Application namespaces for Team B
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: app-team-b-dev
+  labels:
+    app.kubernetes.io/name: app-team-b
+    app.kubernetes.io/component: application
+    environment: dev
+    team: team-b
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    description: "Team B development environment"
+    owner: "team-b@contoso.com"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: app-team-b-test
+  labels:
+    app.kubernetes.io/name: app-team-b
+    app.kubernetes.io/component: application
+    environment: test
+    team: team-b
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    description: "Team B test environment"
+    owner: "team-b@contoso.com"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: app-team-b-prod
+  labels:
+    app.kubernetes.io/name: app-team-b
+    app.kubernetes.io/component: application
+    environment: prod
+    team: team-b
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    description: "Team B production environment"
+    owner: "team-b@contoso.com"
