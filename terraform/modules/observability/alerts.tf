@@ -85,11 +85,11 @@ resource "azurerm_monitor_action_group" "email" {
 }
 
 #------------------------------------------------------------------------------
-# Metric Alert - Node CPU Utilization
+# Metric Alert - Node CPU Utilization (with Teams action)
 #------------------------------------------------------------------------------
 
 resource "azurerm_monitor_metric_alert" "node_cpu" {
-  count = var.create_alerts && var.aks_cluster_id != null ? 1 : 0
+  count = var.create_alerts && var.aks_cluster_id != null && var.teams_webhook_url != null ? 1 : 0
 
   name                = "${var.aks_cluster_name}-node-cpu-high"
   resource_group_name = var.resource_group_name
@@ -107,22 +107,19 @@ resource "azurerm_monitor_metric_alert" "node_cpu" {
     threshold        = 80
   }
 
-  dynamic "action" {
-    for_each = var.teams_webhook_url != null ? toset(["teams"]) : toset([])
-    content {
-      action_group_id = azurerm_monitor_action_group.teams[0].id
-    }
+  action {
+    action_group_id = azurerm_monitor_action_group.teams[0].id
   }
 
   tags = var.tags
 }
 
 #------------------------------------------------------------------------------
-# Metric Alert - Node Memory Utilization
+# Metric Alert - Node Memory Utilization (with Teams action)
 #------------------------------------------------------------------------------
 
 resource "azurerm_monitor_metric_alert" "node_memory" {
-  count = var.create_alerts && var.aks_cluster_id != null ? 1 : 0
+  count = var.create_alerts && var.aks_cluster_id != null && var.teams_webhook_url != null ? 1 : 0
 
   name                = "${var.aks_cluster_name}-node-memory-high"
   resource_group_name = var.resource_group_name
@@ -140,22 +137,19 @@ resource "azurerm_monitor_metric_alert" "node_memory" {
     threshold        = 80
   }
 
-  dynamic "action" {
-    for_each = var.teams_webhook_url != null ? toset(["teams"]) : toset([])
-    content {
-      action_group_id = azurerm_monitor_action_group.teams[0].id
-    }
+  action {
+    action_group_id = azurerm_monitor_action_group.teams[0].id
   }
 
   tags = var.tags
 }
 
 #------------------------------------------------------------------------------
-# Metric Alert - Pod Restart Count
+# Metric Alert - Pod Restart Count (with Teams action)
 #------------------------------------------------------------------------------
 
 resource "azurerm_monitor_metric_alert" "pod_restarts" {
-  count = var.create_alerts && var.aks_cluster_id != null ? 1 : 0
+  count = var.create_alerts && var.aks_cluster_id != null && var.teams_webhook_url != null ? 1 : 0
 
   name                = "${var.aks_cluster_name}-pod-restarts-high"
   resource_group_name = var.resource_group_name
@@ -173,22 +167,19 @@ resource "azurerm_monitor_metric_alert" "pod_restarts" {
     threshold        = 5
   }
 
-  dynamic "action" {
-    for_each = var.teams_webhook_url != null ? toset(["teams"]) : toset([])
-    content {
-      action_group_id = azurerm_monitor_action_group.teams[0].id
-    }
+  action {
+    action_group_id = azurerm_monitor_action_group.teams[0].id
   }
 
   tags = var.tags
 }
 
 #------------------------------------------------------------------------------
-# Metric Alert - Cluster Autoscaler Unschedulable Pods
+# Metric Alert - Cluster Autoscaler Unschedulable Pods (with PagerDuty action)
 #------------------------------------------------------------------------------
 
 resource "azurerm_monitor_metric_alert" "unschedulable_pods" {
-  count = var.create_alerts && var.aks_cluster_id != null ? 1 : 0
+  count = var.create_alerts && var.aks_cluster_id != null && var.pagerduty_integration_key != null ? 1 : 0
 
   name                = "${var.aks_cluster_name}-unschedulable-pods"
   resource_group_name = var.resource_group_name
@@ -212,11 +203,8 @@ resource "azurerm_monitor_metric_alert" "unschedulable_pods" {
     }
   }
 
-  dynamic "action" {
-    for_each = var.pagerduty_integration_key != null ? toset(["pagerduty"]) : toset([])
-    content {
-      action_group_id = azurerm_monitor_action_group.pagerduty[0].id
-    }
+  action {
+    action_group_id = azurerm_monitor_action_group.pagerduty[0].id
   }
 
   tags = var.tags
