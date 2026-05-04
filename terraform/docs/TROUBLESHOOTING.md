@@ -632,7 +632,7 @@ The service principal doesn't have permission to create role assignments. This i
 - Managed Identity Operator role
 
 **Resolution:**
-Option 1: Grant the service principal the "User Access Administrator" role:
+Option 1 (Recommended): Grant the service principal the "User Access Administrator" role:
 ```bash
 az role assignment create \
   --assignee <service-principal-object-id> \
@@ -642,34 +642,33 @@ az role assignment create \
 
 Option 2: Disable role assignments in the modules by adding `enable_role_assignments = false`:
 
-**In AKS module variables.tf:**
-```hcl
-variable "enable_role_assignments" {
-  description = "Enable role assignments (requires Microsoft.Authorization/roleAssignments/write permission)"
-  type        = bool
-  default     = true
-}
-```
+**IMPORTANT:** If you disable role assignments, you MUST manually create the "Managed Identity Operator" role assignment for AKS to work:
+```bash
+# Get the AKS identity principal ID
+AKS_IDENTITY_PRINCIPAL_ID=$(az identity show \
+  --name <aks-identity-name> \
+  --resource-group <security-resource-group> \
+  --query principalId -o tsv)
 
-**In environment main.tf:**
-```hcl
-module "aks" {
-  # ...
-  enable_role_assignments = false
-}
+# Get the kubelet identity resource ID
+KUBELET_IDENTITY_ID=$(az identity show \
+  --name <kubelet-identity-name> \
+  --resource-group <security-resource-group> \
+  --query id -o tsv)
 
-module "security" {
-  # ...
-  enable_role_assignments = false
-}
+# Create the role assignment
+az role assignment create \
+  --assignee $AKS_IDENTITY_PRINCIPAL_ID \
+  --role "Managed Identity Operator" \
+  --scope $KUBELET_IDENTITY_ID
 ```
 
 **Note:** When role assignments are disabled, you must manually create the following role assignments:
-1. AcrPull role for kubelet identity on ACR
-2. Network Contributor role for AKS identity on subnet
-3. Private DNS Zone Contributor role for AKS identity on private DNS zone
-4. Key Vault Secrets User role for AKS and kubelet identities on Key Vault
-5. Managed Identity Operator role for AKS identity on kubelet identity
+1. **Managed Identity Operator** role for AKS identity on kubelet identity (REQUIRED for AKS to work)
+2. AcrPull role for kubelet identity on ACR
+3. Network Contributor role for AKS identity on subnet
+4. Private DNS Zone Contributor role for AKS identity on private DNS zone
+5. Key Vault Secrets User role for AKS and kubelet identities on Key Vault
 
 ---
 
