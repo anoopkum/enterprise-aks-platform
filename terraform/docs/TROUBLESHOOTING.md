@@ -989,3 +989,124 @@ az network private-dns zone delete \
 
 **Example for UK South:**
 - `privatelink.uksouth.azmk8s.io`
+
+
+---
+
+## Error 22: ResourceMissingPermissionError - AKS identity needs DNS zone read permission
+
+**Module:** `terraform/modules/aks`
+
+**Error Message:**
+```
+Error: creating Kubernetes Cluster: unexpected status 400 (400 Bad Request) with response: {
+  "code": "ResourceMissingPermissionError",
+  "message": "Service principal or user-assigned identity must be given certain permissions to resource 
+  /subscriptions/.../resourceGroups/.../providers/Microsoft.Network/privateDnsZones/privatelink.uksouth.azmk8s.io. 
+  Check access result not allowed for action Microsoft.Network/privateDnsZones/read."
+}
+```
+
+**Cause:**
+When using a User-Assigned Managed Identity for AKS with a private cluster, the identity needs "Private DNS Zone Contributor" role on the private DNS zone **before** the cluster is created. The role assignment in the AKS module's rbac.tf was using `azurerm_kubernetes_cluster.main.identity[0].principal_id`, which creates a circular dependency - the cluster can't be created without the permission, but the permission can't be assigned without the cluster.
+
+**Resolution:**
+Move the role assignment to the environment's main.tf and assign it to the user-assigned identity (from the security module) before the AKS module runs:
+
+```hcl
+# In environments/dev/main.tf (or prod)
+
+# Private DNS Zone Contributor for AKS Identity
+# Required for AKS to manage DNS records in private DNS zone during cluster creation
+resource "azurerm_role_assignment" "aks_dns_contributor" {
+  scope                = module.hub_network.aks_private_dns_zone_id
+  role_definition_name = "Private DNS Zone Contributor"
+  principal_id         = module.security.aks_identity_principal_id
+}
+
+# Network Contributor for AKS Identity on AKS Subnet
+# Required for AKS to manage load balancers and route tables
+resource "azurerm_role_assignment" "aks_network_contributor" {
+  scope                = module.spoke_network.aks_subnet_id
+  role_definition_name = "Network Contributor"
+  principal_id         = module.security.aks_identity_principal_id
+}
+
+module "aks" {
+  source = "../../modules/aks"
+
+  # Ensure role assignments are created before AKS cluster
+  depends_on = [
+    azurerm_role_assignment.aks_dns_contributor,
+    azurerm_role_assignment.aks_network_contributor
+  ]
+  
+  # ... rest of configuration
+}
+```
+
+**Key Points:**
+1. The role assignments must use the **user-assigned identity's principal_id** (from security module), not the cluster's identity
+2. The `depends_on` ensures Terraform creates the role assignments before attempting to create the AKS cluster
+3. Remove duplicate role assignments from the AKS module's rbac.tf to avoid conflicts
+
+---
+
+## Error 23: Resource already exists - Firewall Policy Rule Collection Group
+
+**Module:** `terraform/modules/network/hub`
+
+**Error Message:**
+```
+Error: A resource with the ID "/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/
+firewallPolicies/.../ruleCollectionGroups/aks-rules" already exists - to be managed via Terraform 
+this resource needs to be imported into the State.
+```
+
+**Cause:**
+The firewall policy rule collection group was created in a previous Terraform run but the apply failed before the state could be saved. The resource exists in Azure but not in Terraform state.
+
+**Resolution:**
+Option 1: Import the resource into Terraform state:
+```bash
+terraform import \
+  -var="subscription_id=<subscription-id>" \
+  -var="tenant_id=<tenant-id>" \
+  'module.hub_network.azurerm_firewall_policy_rule_collection_group.aks[0]' \
+  '/subscriptions/<subscription-id>/resourceGroups/<hub-rg>/providers/Microsoft.Network/firewallPolicies/<policy-name>/ruleCollectionGroups/aks-rules'
+```
+
+Option 2: Delete the resource in Azure and let Terraform recreate it:
+```bash
+az network firewall policy rule-collection-group delete \
+  --name aks-rules \
+  --policy-name <policy-name> \
+  --resource-group <hub-rg> \
+  --yes
+```
+
+**CI/CD Workflow Fix:**
+Add an import step to the GitHub Actions workflow before apply:
+```yaml
+- name: Import Existing Resources (if needed)
+  run: |
+    terraform import \
+      -var="subscription_id=${{ secrets.AZURE_SUBSCRIPTION_ID }}" \
+      -var="tenant_id=${{ secrets.AZURE_TENANT_ID }}" \
+      'module.hub_network.azurerm_firewall_policy_rule_collection_group.aks[0]' \
+      '/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/enterprise-dev-uksouth-rg-hub/providers/Microsoft.Network/firewallPolicies/enterprise-dev-uksouth-vnet-hub-afw-policy/ruleCollectionGroups/aks-rules' \
+      2>/dev/null || echo "Resource already in state or does not exist"
+  working-directory: terraform/environments/dev
+  continue-on-error: true
+```
+
+**Prevention:**
+This error typically occurs when:
+1. A Terraform apply is interrupted mid-execution
+2. The state file is corrupted or out of sync
+3. Resources are created manually in Azure
+
+To prevent:
+- Use remote state with locking (Azure Storage with blob lease)
+- Don't interrupt Terraform apply operations
+- Avoid manual changes to Terraform-managed resources

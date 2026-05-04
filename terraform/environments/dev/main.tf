@@ -213,11 +213,37 @@ module "data" {
 }
 
 #------------------------------------------------------------------------------
+# AKS Identity Role Assignments (must be created before AKS cluster)
+#------------------------------------------------------------------------------
+
+# Private DNS Zone Contributor for AKS Identity
+# Required for AKS to manage DNS records in private DNS zone during cluster creation
+resource "azurerm_role_assignment" "aks_dns_contributor" {
+  scope                = module.hub_network.aks_private_dns_zone_id
+  role_definition_name = "Private DNS Zone Contributor"
+  principal_id         = module.security.aks_identity_principal_id
+}
+
+# Network Contributor for AKS Identity on AKS Subnet
+# Required for AKS to manage load balancers and route tables
+resource "azurerm_role_assignment" "aks_network_contributor" {
+  scope                = module.spoke_network.aks_subnet_id
+  role_definition_name = "Network Contributor"
+  principal_id         = module.security.aks_identity_principal_id
+}
+
+#------------------------------------------------------------------------------
 # AKS Module
 #------------------------------------------------------------------------------
 
 module "aks" {
   source = "../../modules/aks"
+
+  # Ensure role assignments are created before AKS cluster
+  depends_on = [
+    azurerm_role_assignment.aks_dns_contributor,
+    azurerm_role_assignment.aks_network_contributor
+  ]
 
   resource_group_name = azurerm_resource_group.aks.name
   location            = local.region

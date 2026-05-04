@@ -162,8 +162,28 @@ jobs:
         run: terraform init
         working-directory: terraform/environments/dev
 
+      - name: Import Existing Resources (if needed)
+        run: |
+          # Import firewall policy rule collection group if it exists but not in state
+          terraform import \
+            -var="subscription_id=${{ secrets.AZURE_SUBSCRIPTION_ID }}" \
+            -var="tenant_id=${{ secrets.AZURE_TENANT_ID }}" \
+            'module.hub_network.azurerm_firewall_policy_rule_collection_group.aks[0]' \
+            '/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/enterprise-dev-uksouth-rg-hub/providers/Microsoft.Network/firewallPolicies/enterprise-dev-uksouth-vnet-hub-afw-policy/ruleCollectionGroups/aks-rules' \
+            2>/dev/null || echo "Resource already in state or does not exist"
+        working-directory: terraform/environments/dev
+        continue-on-error: true
+
+      - name: Terraform Plan (refresh)
+        run: |
+          terraform plan \
+            -var="subscription_id=${{ secrets.AZURE_SUBSCRIPTION_ID }}" \
+            -var="tenant_id=${{ secrets.AZURE_TENANT_ID }}" \
+            -out=tfplan-refreshed
+        working-directory: terraform/environments/dev
+
       - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
+        run: terraform apply -auto-approve tfplan-refreshed
         working-directory: terraform/environments/dev
 
   # Plan for prod (after dev apply)
