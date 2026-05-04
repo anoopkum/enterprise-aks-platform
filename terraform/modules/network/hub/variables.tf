@@ -228,15 +228,20 @@ variable "vpn_gateway_type" {
 #------------------------------------------------------------------------------
 
 variable "private_dns_zones" {
-  description = "List of Private DNS zone names to create in the hub"
+  description = "List of Private DNS zone names to create in the hub (excluding AKS which is region-specific)"
   type        = list(string)
   default = [
     "privatelink.azurecr.io",
     "privatelink.vaultcore.azure.net",
     "privatelink.postgres.database.azure.com",
-    "privatelink.blob.core.windows.net",
-    "privatelink.azmk8s.io"
+    "privatelink.blob.core.windows.net"
   ]
+}
+
+variable "aks_private_dns_zone_name" {
+  description = "Private DNS zone name for AKS (region-specific, e.g., privatelink.uksouth.azmk8s.io)"
+  type        = string
+  default     = null # Will be computed from location if not provided
 }
 
 variable "create_private_dns_zones" {

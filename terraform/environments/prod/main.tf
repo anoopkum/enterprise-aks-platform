@@ -238,7 +238,7 @@ module "aks" {
 
   # Private cluster with authorized IPs
   private_cluster_enabled             = true
-  private_dns_zone_id                 = module.hub_network.private_dns_zone_ids["privatelink.azmk8s.io"]
+  private_dns_zone_id                 = module.hub_network.aks_private_dns_zone_id
   private_cluster_public_fqdn_enabled = true
   api_server_authorized_ip_ranges     = var.api_server_authorized_ip_ranges
 

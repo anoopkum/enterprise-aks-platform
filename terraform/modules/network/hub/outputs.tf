@@ -112,11 +112,27 @@ output "ddos_protection_plan_id" {
 #------------------------------------------------------------------------------
 
 output "private_dns_zone_ids" {
-  description = "Map of Private DNS zone names to their IDs"
-  value       = var.create_private_dns_zones ? { for zone in azurerm_private_dns_zone.main : zone.name => zone.id } : {}
+  description = "Map of Private DNS zone names to their IDs (includes AKS zone)"
+  value = var.create_private_dns_zones ? merge(
+    { for zone in azurerm_private_dns_zone.main : zone.name => zone.id },
+    { (azurerm_private_dns_zone.aks[0].name) = azurerm_private_dns_zone.aks[0].id }
+  ) : {}
 }
 
 output "private_dns_zone_names" {
-  description = "List of Private DNS zone names"
-  value       = var.create_private_dns_zones ? [for zone in azurerm_private_dns_zone.main : zone.name] : []
+  description = "List of Private DNS zone names (includes AKS zone)"
+  value = var.create_private_dns_zones ? concat(
+    [for zone in azurerm_private_dns_zone.main : zone.name],
+    [azurerm_private_dns_zone.aks[0].name]
+  ) : []
+}
+
+output "aks_private_dns_zone_id" {
+  description = "ID of the AKS Private DNS zone (region-specific)"
+  value       = var.create_private_dns_zones ? azurerm_private_dns_zone.aks[0].id : null
+}
+
+output "aks_private_dns_zone_name" {
+  description = "Name of the AKS Private DNS zone (region-specific)"
+  value       = var.create_private_dns_zones ? azurerm_private_dns_zone.aks[0].name : null
 }

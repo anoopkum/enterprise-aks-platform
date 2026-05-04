@@ -925,3 +925,67 @@ az network firewall policy rule-collection-group delete \
   --policy-name enterprise-dev-uksouth-vnet-hub-afw-policy \
   --resource-group enterprise-dev-uksouth-rg-hub
 ```
+
+
+---
+
+## Error 21: InvalidPrivateDNSZoneResourceID - AKS requires region-specific DNS zone
+
+**Module:** `terraform/modules/aks`
+
+**Error Message:**
+```
+Error: creating Kubernetes Cluster: unexpected status 400 (400 Bad Request) with response: {
+  "code": "InvalidPrivateDNSZoneResourceID",
+  "message": "Invalid private dns zone resource id '...privatelink.azmk8s.io' for private cluster. 
+  It should be a valid resource id and the private dns zone name should be in either of these formats: 
+  'private.<region>.azmk8s.io, privatelink.<region>.azmk8s.io, [a-zA-Z0-9-]{1,32}.private.<region>.azmk8s.io, 
+  [a-zA-Z0-9-]{1,32}.privatelink.<region>.azmk8s.io'."
+}
+```
+
+**Cause:**
+AKS private clusters require a region-specific private DNS zone name. The generic `privatelink.azmk8s.io` is not valid. The zone name must include the Azure region, e.g., `privatelink.uksouth.azmk8s.io`.
+
+**Resolution:**
+1. Update the hub network module to create a region-specific AKS private DNS zone:
+```hcl
+# In dns.tf
+locals {
+  aks_private_dns_zone_name = "privatelink.${var.location}.azmk8s.io"
+}
+
+resource "azurerm_private_dns_zone" "aks" {
+  count = var.create_private_dns_zones ? 1 : 0
+  name  = local.aks_private_dns_zone_name
+  # ...
+}
+```
+
+2. Update the AKS module to use the region-specific zone:
+```hcl
+private_dns_zone_id = module.hub_network.aks_private_dns_zone_id
+```
+
+3. If the old zone exists, delete it and its VNet links:
+```bash
+# Delete VNet links first
+az network private-dns link vnet delete \
+  --name <vnet-link-name> \
+  --zone-name privatelink.azmk8s.io \
+  --resource-group <hub-rg> --yes
+
+# Then delete the zone
+az network private-dns zone delete \
+  --name privatelink.azmk8s.io \
+  --resource-group <hub-rg> --yes
+```
+
+**Valid DNS Zone Formats:**
+- `private.<region>.azmk8s.io`
+- `privatelink.<region>.azmk8s.io`
+- `<custom-prefix>.private.<region>.azmk8s.io`
+- `<custom-prefix>.privatelink.<region>.azmk8s.io`
+
+**Example for UK South:**
+- `privatelink.uksouth.azmk8s.io`
