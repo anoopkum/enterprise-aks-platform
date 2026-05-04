@@ -197,6 +197,7 @@ module "data" {
   postgresql_sku_name              = "GP_Standard_D4s_v3"
   postgresql_ha_enabled            = true
   postgresql_backup_retention_days = 35
+  postgresql_enable_pgbouncer      = true # Supported on General Purpose tier
 
   # Private endpoints
   private_endpoint_subnet_id = module.spoke_network.private_endpoints_subnet_id
@@ -334,8 +335,9 @@ module "governance" {
 
   subscription_id = var.subscription_id
 
-  # Prod: enforce policies
-  enable_policy_assignments = true
+  # Prod: disable policy assignments until SP has "Resource Policy Contributor" role
+  # To enable, grant the SP "Resource Policy Contributor" role at subscription level
+  enable_policy_assignments = false
   policy_enforcement_mode   = "Default"
 
   # Budget

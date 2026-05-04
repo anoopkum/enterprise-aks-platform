@@ -173,6 +173,12 @@ variable "postgresql_private_dns_zone_id" {
   default     = null
 }
 
+variable "postgresql_enable_pgbouncer" {
+  description = "Enable PgBouncer connection pooling. Note: NOT supported on Burstable tier (B_Standard_*)"
+  type        = bool
+  default     = true
+}
+
 #------------------------------------------------------------------------------
 # Storage Account Configuration
 #------------------------------------------------------------------------------

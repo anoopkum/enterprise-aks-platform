@@ -87,27 +87,37 @@ resource "azurerm_postgresql_flexible_server_configuration" "ssl_min_protocol_ve
 
 #------------------------------------------------------------------------------
 # PostgreSQL Server Configuration - PgBouncer
+# Note: PgBouncer is NOT supported on Burstable tier (B_Standard_*)
+# Only enable for General Purpose (GP_*) or Memory Optimized (MO_*) tiers
 #------------------------------------------------------------------------------
 
 resource "azurerm_postgresql_flexible_server_configuration" "pgbouncer_enabled" {
+  count = var.postgresql_enable_pgbouncer ? 1 : 0
+
   name      = "pgbouncer.enabled"
   server_id = azurerm_postgresql_flexible_server.main.id
   value     = "true"
 }
 
 resource "azurerm_postgresql_flexible_server_configuration" "pgbouncer_default_pool_size" {
+  count = var.postgresql_enable_pgbouncer ? 1 : 0
+
   name      = "pgbouncer.default_pool_size"
   server_id = azurerm_postgresql_flexible_server.main.id
   value     = "50"
 }
 
 resource "azurerm_postgresql_flexible_server_configuration" "pgbouncer_min_pool_size" {
+  count = var.postgresql_enable_pgbouncer ? 1 : 0
+
   name      = "pgbouncer.min_pool_size"
   server_id = azurerm_postgresql_flexible_server.main.id
   value     = "10"
 }
 
 resource "azurerm_postgresql_flexible_server_configuration" "pgbouncer_max_client_conn" {
+  count = var.postgresql_enable_pgbouncer ? 1 : 0
+
   name      = "pgbouncer.max_client_conn"
   server_id = azurerm_postgresql_flexible_server.main.id
   value     = "5000"

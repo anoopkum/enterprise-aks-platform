@@ -20,7 +20,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "user" {
   os_disk_size_gb       = each.value.os_disk_size_gb
   os_disk_type          = each.value.os_disk_type
   vnet_subnet_id        = var.vnet_subnet_id
-  enable_auto_scaling   = true
+  auto_scaling_enabled  = true
 
   # Spot instance configuration
   priority        = each.value.priority

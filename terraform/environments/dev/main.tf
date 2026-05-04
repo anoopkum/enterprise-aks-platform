@@ -184,14 +184,16 @@ module "data" {
   location            = local.region
 
   # ACR - Standard SKU for dev (no geo-replication)
-  acr_name = "${local.org}${local.environment}acr"
-  acr_sku  = "Standard"
+  acr_name                          = "${local.org}${local.environment}acr"
+  acr_sku                           = "Standard"
+  acr_public_network_access_enabled = true # Required for Standard SKU (no private endpoint)
 
-  # PostgreSQL - smaller SKU for dev
+  # PostgreSQL - smaller SKU for dev (Burstable tier)
   postgresql_server_name           = "${local.org}-${local.environment}-${local.region}-psql"
   postgresql_sku_name              = "B_Standard_B2s"
   postgresql_ha_enabled            = false # No HA in dev
   postgresql_backup_retention_days = 7
+  postgresql_enable_pgbouncer      = false # PgBouncer not supported on Burstable tier
 
   # Private endpoints
   private_endpoint_subnet_id = module.spoke_network.private_endpoints_subnet_id
@@ -300,8 +302,9 @@ module "governance" {
 
   subscription_id = var.subscription_id
 
-  # Dev: audit mode only (no enforcement)
-  enable_policy_assignments = true
+  # Dev: disable policy assignments (SP lacks Microsoft.Authorization/policyAssignments/write permission)
+  # To enable, grant the SP "Resource Policy Contributor" role at subscription level
+  enable_policy_assignments = false
   policy_enforcement_mode   = "DoNotEnforce"
 
   # Budget
