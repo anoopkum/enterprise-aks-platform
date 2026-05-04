@@ -31,7 +31,7 @@ spoke_vnet_address_space = ["10.21.0.0/16"]
 # AKS Configuration
 #------------------------------------------------------------------------------
 
-kubernetes_version = "1.31"
+kubernetes_version = "1.30"
 
 # Azure AD group IDs for AKS admin access
 # aks_admin_group_ids = ["00000000-0000-0000-0000-000000000000"]

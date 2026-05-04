@@ -823,3 +823,74 @@ List recent workflow runs:
 ```bash
 gh run list --workflow=terraform.yml --limit 5
 ```
+
+
+---
+
+## Error 18: Kubernetes version requires LTS
+
+**Module:** `terraform/modules/aks`
+
+**Error Message:**
+```
+Error: creating Kubernetes Cluster: unexpected status 400 (400 Bad Request) with response: {
+  "code": "K8sVersionNotSupported",
+  "message": "Managed cluster is on version 1.31.x, which is only available for Long-Term Support (LTS). 
+  If you intend to onboard to LTS, please ensure the cluster is in Premium tier and LTS support plan..."
+}
+```
+
+**Cause:**
+Kubernetes version 1.31+ requires AKS Premium tier with Long-Term Support (LTS) plan. Free and Standard tiers cannot use these versions.
+
+**Resolution:**
+Option 1: Use a supported GA version (recommended for dev/test):
+```hcl
+# In terraform.tfvars
+kubernetes_version = "1.30"
+```
+
+Option 2: Upgrade to Premium tier with LTS (for production):
+```hcl
+# In main.tf
+sku_tier = "Premium"
+
+# Enable LTS in the cluster configuration
+support_plan = "AKSLongTermSupport"
+```
+
+**Check available versions:**
+```bash
+az aks get-versions --location uksouth --output table
+```
+
+---
+
+## Error 19: Resource already exists - needs import
+
+**Module:** Various
+
+**Error Message:**
+```
+Error: A resource with the ID "..." already exists - to be managed via Terraform this resource 
+needs to be imported into the State.
+```
+
+**Cause:**
+The resource was created outside of Terraform or in a previous failed run, and now exists in Azure but not in Terraform state.
+
+**Resolution:**
+Import the resource into Terraform state:
+```bash
+# Example for firewall rule collection group
+terraform import 'module.hub_network.azurerm_firewall_policy_rule_collection_group.aks[0]' \
+  '/subscriptions/<sub-id>/resourceGroups/<rg>/providers/Microsoft.Network/firewallPolicies/<policy>/ruleCollectionGroups/<name>'
+```
+
+Or delete the resource in Azure and let Terraform recreate it:
+```bash
+az network firewall policy rule-collection-group delete \
+  --name aks-rules \
+  --policy-name enterprise-dev-uksouth-vnet-hub-afw-policy \
+  --resource-group enterprise-dev-uksouth-rg-hub
+```

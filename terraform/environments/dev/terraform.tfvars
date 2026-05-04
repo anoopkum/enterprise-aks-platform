@@ -19,7 +19,7 @@ hub_vnet_address_space   = ["10.0.0.0/16"]
 spoke_vnet_address_space = ["10.1.0.0/16"]
 
 # AKS
-kubernetes_version = "1.31"
+kubernetes_version = "1.30"
 
 # Azure AD Admin Group - Create a group in Azure AD and add the Object ID here
 # To create: az ad group create --display-name "AKS-Admins-Dev" --mail-nickname "aks-admins-dev"
