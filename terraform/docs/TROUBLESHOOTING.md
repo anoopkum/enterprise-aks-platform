@@ -827,7 +827,7 @@ gh run list --workflow=terraform.yml --limit 5
 
 ---
 
-## Error 18: Kubernetes version requires LTS
+## Error 18: Kubernetes version requires LTS (1.31+)
 
 **Module:** `terraform/modules/aks`
 
@@ -863,6 +863,37 @@ support_plan = "AKSLongTermSupport"
 ```bash
 az aks get-versions --location uksouth --output table
 ```
+
+---
+
+## Error 20: Kubernetes version 1.30 also requires LTS in some regions
+
+**Module:** `terraform/modules/aks`
+
+**Error Message:**
+```
+Error: creating Kubernetes Cluster: unexpected status 400 (400 Bad Request) with response: {
+  "code": "K8sVersionNotSupported",
+  "message": "Managed cluster is on version 1.30.14, which is only available for Long-Term Support (LTS)..."
+}
+```
+
+**Cause:**
+As of 2026, Kubernetes version 1.30 has also moved to LTS-only support in Azure. The "KubernetesOfficial" support plan is only available for more recent versions (1.33+).
+
+**Resolution:**
+Use Kubernetes version 1.33 or later which supports the "KubernetesOfficial" plan:
+```hcl
+# In terraform.tfvars
+kubernetes_version = "1.33"
+```
+
+**Check available versions and their support plans:**
+```bash
+az aks get-versions --location uksouth --output table
+```
+
+The output shows which versions support "KubernetesOfficial" (standard support) vs "AKSLongTermSupport" (requires Premium tier).
 
 ---
 
