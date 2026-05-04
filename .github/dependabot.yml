@@ -1,0 +1,84 @@
+# Dependabot configuration for automated dependency updates
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates
+
+version: 2
+updates:
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    reviewers:
+      - "anoopkum"
+    open-pull-requests-limit: 5
+
+  # Terraform providers
+  - package-ecosystem: "terraform"
+    directory: "/terraform/modules/aks"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "terraform"
+    labels:
+      - "dependencies"
+      - "terraform"
+    reviewers:
+      - "anoopkum"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "terraform"
+    directory: "/terraform/modules/network"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "terraform"
+    labels:
+      - "dependencies"
+      - "terraform"
+
+  - package-ecosystem: "terraform"
+    directory: "/terraform/modules/security"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "terraform"
+    labels:
+      - "dependencies"
+      - "terraform"
+
+  - package-ecosystem: "terraform"
+    directory: "/terraform/modules/data"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "terraform"
+    labels:
+      - "dependencies"
+      - "terraform"
+
+  - package-ecosystem: "terraform"
+    directory: "/terraform/modules/observability"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "terraform"
+    labels:
+      - "dependencies"
+      - "terraform"
+
+  - package-ecosystem: "terraform"
+    directory: "/terraform/modules/governance"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "terraform"
+    labels:
+      - "dependencies"
+      - "terraform"
